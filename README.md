@@ -6,9 +6,15 @@ Astrbot的tts功能补充（使用Cosyvoice2-0.5b本地模型）
 
 将[Cosyvoice官方文档](https://www.modelscope.cn/models/iic/CosyVoice2-0.5B/summary)中的操作做一遍，检查是否有遗漏的库（详见backup_py310.yaml与req.txt）
 
-记得将Cosyvoice的项目文件clone到插件文件夹下 (只下载Cosyvoice2 0.5b模型便可)  
+记得将Cosyvoice的项目文件clone到插件文件夹下 eg.E:\AstrBot\data\plugins\astrbot_plugin_tts_Cosyvoice2
 
-eg.E:\AstrBot\data\plugins\astrbot_plugin_tts_Cosyvoice2
+(只下载Cosyvoice2 0.5b模型便可，即：
+
+'from modelscope import snapshot_download'  
+
+'snapshot_download('iic/CosyVoice2-0.5B', local_dir='pretrained_models/CosyVoice2-0.5B')'
+
+) 
 
 # 使用
 
