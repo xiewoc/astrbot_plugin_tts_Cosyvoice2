@@ -1,6 +1,6 @@
 name: astrbot_plugin_tts_Cosyvoice2
 desc: 用于使用Cosyvoice2进行文字转语音。 
-help: 输入 /t2s 进行文字转语音 
+help: 与官方tts方法一致，配置时用openai_tts_api即可，api填入127.0.0.1:5050，其余不用管，详情见repo
 version: v0.0.1 
 author: xiewoc 
 repo: https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2
