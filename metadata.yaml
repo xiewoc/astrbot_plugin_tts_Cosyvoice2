@@ -1,0 +1,6 @@
+name: astrbot_plugin_tts_Cosyvoice2
+desc: 用于使用Cosyvoice2进行文字转语音。 
+help: 输入 /t2s 进行文字转语音 
+version: v0.0.1 
+author: xiewoc 
+repo: https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2
