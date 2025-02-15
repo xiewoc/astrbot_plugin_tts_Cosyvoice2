@@ -19,7 +19,6 @@ lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_
 
 def cleanup():
     """清理函数，用于在程序结束时删除锁文件"""
-    print(lock_file_path)
     if os.path.exists(lock_file_path):
         os.remove(lock_file_path)
 
