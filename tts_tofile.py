@@ -15,12 +15,14 @@ from modelscope.utils.logger import get_logger
 
 logger = get_logger()
 logger.setLevel(logging.ERROR)
+logging.getLogger().setLevel(logging.ERROR)
 providers = ['CUDAExecutionProvider','AzureExecutionProvider', 'CPUExecutionProvider']
 cosyvoice = CosyVoice2(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models/CosyVoice2-0.5B'), load_jit=False, load_trt=False, fp16=True)
 
 def wav2mp3(wav_path,script_path):
     audio = AudioSegment.from_wav(wav_path)
     audio.export(os.path.join(script_path, "output.mp3"), format="mp3")
+    os.remove(wav_path)
     mp3_path = os.path.join(script_path, "output.mp3")
     return mp3_path
 
@@ -57,7 +59,8 @@ def merge_audio_files(input_filename_form,output_filename, directory):
     combined.export(os.path.join(directory,output_filename), format="wav")
 
 
-def TTS(text,prompt_speech_16k,speech_form,script_path):
+def TTS(text,prompt_speech_16k_name,speech_form,script_path):    
+    prompt_speech_16k = load_wav(os.path.join(script_path,prompt_speech_16k_name), 16000)
     text = text.replace('\n','').replace('\r','')
     result = re.split(r'[\n。]', text)
     for t, sp_sentences in enumerate(result):
@@ -77,3 +80,4 @@ def TTS(text,prompt_speech_16k,speech_form,script_path):
 
 if __name__ == "__main__":
     print("This is a model ,you can't run this seperately.")
+print(__name__,"when starting tts_tofile.py")

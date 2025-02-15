@@ -1,6 +1,7 @@
 #有关tts的详细配置请移步service.py
 from astrbot.api.all import *
 from astrbot.api.provider import ProviderRequest
+from astrbot.api.provider import LLMResponse
 from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 import sys
@@ -9,10 +10,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from multiprocessing import Process
 import atexit
+import logging
 
-from service import *
 global on_init 
 on_init = True
+
+logging.getLogger().setLevel(logging.ERROR)
 
 # 锁文件路径
 lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_process.lock")
@@ -23,7 +26,8 @@ def cleanup():
         os.remove(lock_file_path)
 
 def child_process_function():
-    run_service()
+    import service 
+    service.run_service()
 
 def start_child_process():
     global on_init 
@@ -31,10 +35,10 @@ def start_child_process():
     """启动子进程的函数"""
     if os.path.exists(lock_file_path):
         if on_init == True:
-	    cleanup()
-	    on_init = False
+            cleanup()
+            on_init = False
             pass
-	else:
+        else:
             print("Another instance of the child process is already running.")
             return None
     
@@ -48,25 +52,26 @@ def start_child_process():
     # 创建并启动子进程
     p = Process(target=child_process_function)
     p.start()
+    print("sub process started")
     return p
 
 def terminate_child_process_on_exit(child_process):
     """注册一个函数，在主进程退出时终止子进程"""
     def cleanup_on_exit():
         if child_process and child_process.is_alive():
-            print("Terminating child process...")
             child_process.terminate()
             child_process.join()  # 确保子进程已经完全终止
-            print("Child process terminated.")
+            print("Service.py process terminated.")
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "0.0.2", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
-class MyPlugin(Star):
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.0", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+class astrbot_plugin_tts_Cosyvoice2(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-
-child_process = start_child_process()
-if child_process:
-    terminate_child_process_on_exit(child_process)
+        print(__name__,"when starting main.py")    
+        child_process = start_child_process()
+        if child_process:
+            terminate_child_process_on_exit(child_process)
     
+
