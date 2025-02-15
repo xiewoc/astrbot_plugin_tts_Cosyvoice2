@@ -11,12 +11,15 @@ from multiprocessing import Process
 import atexit
 
 from service import *
+global on_init 
+on_init = True
 
 # 锁文件路径
-lock_file_path = "child_process.lock"
+lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_process.lock")
 
 def cleanup():
     """清理函数，用于在程序结束时删除锁文件"""
+    print(lock_file_path)
     if os.path.exists(lock_file_path):
         os.remove(lock_file_path)
 
@@ -24,10 +27,17 @@ def child_process_function():
     run_service()
 
 def start_child_process():
+    global on_init 
+
     """启动子进程的函数"""
     if os.path.exists(lock_file_path):
-        print("Another instance of the child process is already running.")
-        return None
+        if on_init == True:
+	    cleanup()
+	    on_init = False
+            pass
+	else:
+            print("Another instance of the child process is already running.")
+            return None
     
     # 创建锁文件
     with open(lock_file_path, 'w') as f:
@@ -56,10 +66,8 @@ def terminate_child_process_on_exit(child_process):
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        
+
 child_process = start_child_process()
 if child_process:
     terminate_child_process_on_exit(child_process)
-
-
     
