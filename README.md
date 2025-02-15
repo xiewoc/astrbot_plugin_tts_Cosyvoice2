@@ -2,6 +2,8 @@
 
 Astrbot的tts功能补充（使用Cosyvoice2-0.5b本地模型）
 
+# 注意：本插件对环境要求较高：要有python>=3.10,vs 编译器等等，不建议新手使用
+
 # 配置
 
 将[Cosyvoice官方文档](https://www.modelscope.cn/models/iic/CosyVoice2-0.5B/summary)中的操作做一遍，检查是否有遗漏的库（详见backup_py310.yaml），记得将Cosyvoice的项目文件拷贝到插件文件夹下  （eg.E:\AstrBot\data\plugins\astrbot_plugin_tts_Cosyvoice2 ）
