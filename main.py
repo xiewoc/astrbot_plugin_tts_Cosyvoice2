@@ -62,7 +62,7 @@ def terminate_child_process_on_exit(child_process):
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "0.0.1", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "0.0.2", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
