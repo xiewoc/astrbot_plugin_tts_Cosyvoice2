@@ -1,13 +1,14 @@
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'third_party\\Matcha-TTS'))
-sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'third_party\\Matcha-TTS'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice\\third_party\\Matcha-TTS'))
+sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice\\third_party\\Matcha-TTS'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice'))
+sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice'))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from cosyvoice.cli.cosyvoice import CosyVoice2
 from cosyvoice.utils.file_utils import load_wav
 from pydub import AudioSegment
-import onnxruntime
 import torchaudio
 import re
 import logging
@@ -16,8 +17,8 @@ from modelscope.utils.logger import get_logger
 logger = get_logger()
 logger.setLevel(logging.ERROR)
 logging.getLogger().setLevel(logging.ERROR)
-providers = ['CUDAExecutionProvider','AzureExecutionProvider', 'CPUExecutionProvider']
-cosyvoice = CosyVoice2(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models/CosyVoice2-0.5B'), load_jit=False, load_trt=False, fp16=True)
+
+cosyvoice = CosyVoice2(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice\\pretrained_models\\CosyVoice2-0.5B'), load_jit=False, load_trt=False, fp16=True)
 
 def wav2mp3(wav_path,script_path):
     audio = AudioSegment.from_wav(wav_path)
@@ -80,4 +81,3 @@ def TTS(text,prompt_speech_16k_name,speech_form,script_path):
 
 if __name__ == "__main__":
     print("This is a model ,you can't run this seperately.")
-print(__name__,"when starting tts_tofile.py")

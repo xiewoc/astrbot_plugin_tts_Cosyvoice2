@@ -12,10 +12,21 @@ from multiprocessing import Process
 import atexit
 import logging
 
-global on_init 
+global on_init
 on_init = True
 
 logging.getLogger().setLevel(logging.ERROR)
+
+def is_directory_empty(path):
+    with os.scandir(path) as entries:
+        return not any(entries)
+
+def run_command(command):#cmd line  git required
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    output, error = process.communicate()
+    if error:
+        print(f"Error: {error.decode()}")
+    return output.decode()
 
 # 锁文件路径
 lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_process.lock")
@@ -25,11 +36,12 @@ def cleanup():
     if os.path.exists(lock_file_path):
         os.remove(lock_file_path)
 
-def child_process_function():
+def child_process_function(remove_think_tag):
+    #print(remove_think_tag,"when passing arg remove_think_tag")#debug
     import service 
-    service.run_service()
+    service.run_service(remove_think_tag)
 
-def start_child_process():
+def start_child_process(remove_think_tag):
     global on_init 
 
     """启动子进程的函数"""
@@ -50,7 +62,7 @@ def start_child_process():
     atexit.register(cleanup)
     
     # 创建并启动子进程
-    p = Process(target=child_process_function)
+    p = Process(target=child_process_function, args=(remove_think_tag,))
     p.start()
     print("sub process started")
     return p
@@ -65,13 +77,17 @@ def terminate_child_process_on_exit(child_process):
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.0", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.2", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class astrbot_plugin_tts_Cosyvoice2(Star):
-    def __init__(self, context: Context):
+    def __init__(self, context: Context,config: dict):
         super().__init__(context)
-        print(__name__,"when starting main.py")    
-        child_process = start_child_process()
+        self.config = config
+        child_process = start_child_process(self.config['if_remove_think_tag'])
         if child_process:
             terminate_child_process_on_exit(child_process)
-    
 
+
+if is_directory_empty(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):
+    run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git")
+    from modelscope import snapshot_download
+    snapshot_download('iic/CosyVoice2-0.5B', local_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','pretrained_models','CosyVoice2-0.5B'))

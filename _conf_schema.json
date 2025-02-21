@@ -1,0 +1,9 @@
+{
+    "if_remove_think_tag": {
+        "description": "是否去除<think></think>",
+        "type": "string",
+        "options": ["True", "False"],
+        "hint": "因为deepseek-r1模型及其衍生模型会以<think>.....</think>的形式输出思考过程，会影响语音合成，如果不是使用deepseek-r1模型及其衍生模型则可忽略",
+        "obvious_hint": true
+    }
+}
