@@ -84,8 +84,18 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             terminate_child_process_on_exit(child_process)
 
 if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):
+    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','cosyvoice')):
+        pass
+    else:
+        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
+        run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
     pass
 else:
+    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','cosyvoice')):
+        pass
+    else:
+        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
+        run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
     base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
     run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
     from modelscope import snapshot_download
