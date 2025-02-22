@@ -22,11 +22,14 @@ class SpeechRequest(BaseModel):
     input: str
     voice: str
 
-def run_service(if_remove_think_tag):
+def run_service(if_remove_think_tag,if_preload):
     global remove_think_tag
     remove_think_tag = if_remove_think_tag
+    if if_preload == 'True':
+        import tts_tofile as ts
     uvicorn.run(app, host="127.0.0.1", port=5050)
     #print(if_remove_think_tag,"when service.py recieve if_remove_think_tag")
+    #print(if_preload,"when service.py recieve if_preload")
     
 @app.post("/audio/speech")
 async def generate_speech(request: Request, speech_request: SpeechRequest):

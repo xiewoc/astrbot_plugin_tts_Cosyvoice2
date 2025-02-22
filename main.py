@@ -21,7 +21,7 @@ def is_directory_empty(path):
     with os.scandir(path) as entries:
         return not any(entries)
 
-def run_command(command):#cmd line  git required
+def run_command(command):#cmd line  git required!!!!
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     output, error = process.communicate()
     if error:
@@ -36,12 +36,12 @@ def cleanup():
     if os.path.exists(lock_file_path):
         os.remove(lock_file_path)
 
-def child_process_function(remove_think_tag):
+def child_process_function(remove_think_tag,preload):
     #print(remove_think_tag,"when passing arg remove_think_tag")#debug
     import service 
-    service.run_service(remove_think_tag)
+    service.run_service(remove_think_tag,preload)
 
-def start_child_process(remove_think_tag):
+def start_child_process(remove_think_tag,preload):
     global on_init 
 
     """启动子进程的函数"""
@@ -62,7 +62,7 @@ def start_child_process(remove_think_tag):
     atexit.register(cleanup)
     
     # 创建并启动子进程
-    p = Process(target=child_process_function, args=(remove_think_tag,))
+    p = Process(target=child_process_function, args=(remove_think_tag,preload,))
     p.start()
     print("sub process started")
     return p
@@ -77,12 +77,12 @@ def terminate_child_process_on_exit(child_process):
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.2", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.3", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class astrbot_plugin_tts_Cosyvoice2(Star):
     def __init__(self, context: Context,config: dict):
         super().__init__(context)
         self.config = config
-        child_process = start_child_process(self.config['if_remove_think_tag'])
+        child_process = start_child_process(self.config['if_remove_think_tag'],self.config['if_preload'])
         if child_process:
             terminate_child_process_on_exit(child_process)
 
