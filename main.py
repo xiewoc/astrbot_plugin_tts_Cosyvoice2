@@ -11,15 +11,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from multiprocessing import Process
 import atexit
 import logging
+import subprocess 
 
 global on_init
 on_init = True
 
 logging.getLogger().setLevel(logging.ERROR)
-
-def is_directory_empty(path):
-    with os.scandir(path) as entries:
-        return not any(entries)
 
 def run_command(command):#cmd line  git required!!!!
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -86,8 +83,10 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         if child_process:
             terminate_child_process_on_exit(child_process)
 
-
-if is_directory_empty(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):
-    run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git")
+if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):
+    pass
+else:
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
+    run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
     from modelscope import snapshot_download
     snapshot_download('iic/CosyVoice2-0.5B', local_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','pretrained_models','CosyVoice2-0.5B'))
