@@ -1,16 +1,18 @@
 {
     "if_remove_think_tag": {
         "description": "是否去除<think></think>",
-        "type": "string",
-        "options": ["True", "False"],
+        "type": "bool",
         "hint": "因为deepseek-r1模型及其衍生模型会以<think>.....</think>的形式输出思考过程，会影响语音合成，如果不是使用deepseek-r1模型及其衍生模型则可忽略",
         "obvious_hint": true
     },
     "if_preload": {
         "description": "是否预加载Cosyvoice模型",
-        "type": "string",
-        "options": ["True", "False"],
-        "hint": "预启动会增加启动时间，但会有更快速的语音合成体验",
-        "default": "True"
+        "type": "bool",
+        "hint": "预启动会增加启动时间，但会有更快速的语音合成体验"
+    },
+    "if_reduce_parenthesis": {
+        "description": "是否提醒llm减少括号中内容生成",
+        "type": "bool",
+        "hint": "有些人格设置会影响该设置生效，请酌情使用"
     }
 }
