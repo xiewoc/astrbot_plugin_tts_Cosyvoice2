@@ -23,6 +23,6 @@ eg.
 
 # 新内容
 
-for 1.0.3
+for 1.0.4
 
-帮助用户下载Cosyvoice的GitHub项目及模型文件，优化了requirements.txt结构，添加模型预启动选项
+添加提示词选项，将string类型的schema改为bool类型的
