@@ -14,5 +14,32 @@
         "description": "是否提醒llm减少括号中内容生成",
         "type": "bool",
         "hint": "有些人格设置会影响该设置生效，请酌情使用"
+    },
+    "generate_method": {
+        "description": "生成模式选择",
+        "type": "string",
+        "options": ["zero_shot","instruct2"],
+        "hint": "zero_shot需要提供源语音中的文字内容，instruct2则不需要",
+        "default": "instruct2"
+    },
+    "misc":{
+        "description": "杂项",
+        "type": "object",
+        "items": {
+            "zero_shot_text":{
+                "description": "zero_shot文本",
+                "type": "string",
+                "hint": "zero_shot供源语音中的文字内容，用以生成准确语音，文字内容越准确越好",
+                "obvious_hint": true,
+                "default": "相信我吧，我会带你们走向光明"
+            },
+            "instruct_speech_form":{
+                "description": "instrut生成语音语言形式",
+                "type": "string",
+                "hint": "就是用什么话说出来，目前已测：四川话、广东话、普通话",
+                "obvious_hint": true,
+                "default": "用普通话说这句话"
+            }
+        }
     }
 }

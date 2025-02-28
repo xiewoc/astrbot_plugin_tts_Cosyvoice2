@@ -34,12 +34,12 @@ def cleanup():
     if os.path.exists(lock_file_path):
         os.remove(lock_file_path)
 
-def child_process_function(remove_think_tag,preload):
+def child_process_function(remove_think_tag,preload,instruct_speech_form ,zero_shot_text ,generate_method):
     #print(remove_think_tag,"when passing arg remove_think_tag")#debug
     import service 
-    service.run_service(remove_think_tag,preload)
+    service.run_service(remove_think_tag,preload,instruct_speech_form ,zero_shot_text ,generate_method)
 
-def start_child_process(remove_think_tag,preload):
+def start_child_process(remove_think_tag,preload,instruct_speech_form ,zero_shot_text ,generate_method):
     global on_init 
 
     """启动子进程的函数"""
@@ -60,7 +60,7 @@ def start_child_process(remove_think_tag,preload):
     atexit.register(cleanup)
     
     # 创建并启动子进程
-    p = Process(target=child_process_function, args=(remove_think_tag,preload,))
+    p = Process(target=child_process_function, args=(remove_think_tag,preload,instruct_speech_form ,zero_shot_text ,generate_method,))
     p.start()
     print("sub process started")
     return p
@@ -75,20 +75,32 @@ def terminate_child_process_on_exit(child_process):
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.4", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.5", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class astrbot_plugin_tts_Cosyvoice2(Star):
     def __init__(self, context: Context,config: dict):
         super().__init__(context)
         self.config = config
+        
         global reduce_parenthesis
         reduce_parenthesis = self.config['if_reduce_parenthesis']
-        child_process = start_child_process(self.config['if_remove_think_tag'],self.config['if_preload'])
+        #generate_method
+        generate_method = self.config['generate_method']
+        
+        sub_config = self.config.get('misc', {})
+        #zero_shot_text,instruct_speech_form
+        zero_shot_text = sub_config.get('zero_shot_text', '')
+        instruct_speech_form = sub_config.get('instruct_speech_form', '')
+
+        
+        child_process = start_child_process(self.config['if_remove_think_tag'],self.config['if_preload'],instruct_speech_form ,zero_shot_text ,generate_method)
         if child_process:
             terminate_child_process_on_exit(child_process)
 
     @filter.on_llm_request()
-    async def my_custom_hook_1(self, event: AstrMessageEvent, req: ProviderRequest): # 请注意有三个参数
-        req.system_prompt += "请在输出的字段中减少在括号中对动作、心情等的描写，尽量只剩下口语部分"
+    async def on_call_llm(self, event: AstrMessageEvent, req: ProviderRequest): # 请注意有三个参数
+        global reduce_parenthesis
+        if reduce_parenthesis == True:
+            req.system_prompt += "请在输出的字段中减少在括号中对动作、心情等的描写，尽量只剩下口语部分"
 
 if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):
     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','cosyvoice')):

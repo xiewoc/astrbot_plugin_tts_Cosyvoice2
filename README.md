@@ -12,7 +12,7 @@ Astrbot的tts功能补充（使用Cosyvoice2-0.5b本地模型）
 
     pip  install -r requirements.txt
 
-与官方tts方法一致，配置时用openai_tts_api，api填入127.0.0.1:5050，voice填入原声音文件(默认：zero_shot_prompt_明.wav)，超时建议在60左右，key随意
+与官方tts方法一致，配置时用openai_tts_api，api填入127.0.0.1:5050，voice填入原声音文件(默认：prompt_明.wav)，超时建议在60左右，key随意
 
 # 使用
 
@@ -23,6 +23,6 @@ eg.
 
 # 新内容
 
-for 1.0.4
+for 1.0.5
 
-添加提示词选项，将string类型的schema改为bool类型的
+很多，可以自己看看，尤其是配置界面，推荐使用zeroshot，人机感减了不知多少
