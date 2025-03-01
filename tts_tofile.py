@@ -84,6 +84,16 @@ def TTS(text,prompt_speech_16k_name,speech_form,script_path,generate_mode,zero_s
                     merge_audio_files(r'^instruct_%d_\d+\.wav$' % t, f"merged_audio_{t}.wav",script_path)
             else:
                 pass
+    else:
+        for t, sp_sentences in enumerate(result):
+            if sp_sentences != '':
+                for i, j in enumerate(cosyvoice.inference_instruct2(sp_sentences, speech_form, prompt_speech_16k, stream=False)):
+                    filename = f'instruct_{t}_{i}.wav'  # 修改文件名以避免重复
+                    torchaudio.save(os.path.join(script_path,filename), j['tts_speech'], cosyvoice.sample_rate)
+                    # 仅在此处合并当前段落的所有音频片段到一个中间文件
+                    merge_audio_files(r'^instruct_%d_\d+\.wav$' % t, f"merged_audio_{t}.wav",script_path)
+            else:
+                pass
     # 所有句子处理完后，合并所有中间文件
     merge_audio_files(r'^merged_audio_\d+\.wav$', "merged_audio_final.wav",script_path)
     cleanup_temp_files(script_path)
