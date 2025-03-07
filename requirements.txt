@@ -21,7 +21,6 @@ onnxruntime-gpu==1.18.0; sys_platform == 'linux'
 onnxruntime==1.18.0; sys_platform == 'darwin' or sys_platform == 'windows'
 openai-whisper==20231117
 protobuf==4.25
-pydantic==2.7.0
 pyworld==0.3.4
 rich==13.7.1
 soundfile==0.12.1
@@ -40,7 +39,7 @@ torchvision
 torchaudio
 pydantic==2.10.6
 pydub==0.25.1
-multiprocessing==0.70.16
+multiprocessing
 ffmpeg==1.4
 ffmpy==0.5.0
 ffprobe==0.5
