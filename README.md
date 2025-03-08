@@ -10,7 +10,7 @@ Astrbot的tts功能补充（使用Cosyvoice2-0.5b本地模型）
 
 使用以下命令在shell安装所需库
 
-    pip  install -r requirements.txt
+    pip install -r requirements.txt
 
 与官方tts方法一致，配置时用openai_tts_api，api填入127.0.0.1:5050，voice填入原声音文件(默认：prompt_明.wav)，超时建议在60左右，key随意
 
