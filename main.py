@@ -152,6 +152,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             "voice": sound  
             }
         requests.post('http://127.0.0.1:5050/config', json=payload)
+        yield event.plain_result(f"音源更换成功: {sound}")
 
     @set.command("form")
     async def form(self, event: AstrMessageEvent, form:str):
@@ -161,6 +162,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             "voice": "" 
             }
         requests.post('http://127.0.0.1:5050/config', json=payload)
+        yield event.plain_result(f"方言更换成功: {form}")
 
     @tts_cfg.command("list")
     async def list(self, event: AstrMessageEvent):
