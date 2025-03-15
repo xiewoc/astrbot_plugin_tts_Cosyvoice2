@@ -14,6 +14,10 @@ from pydub import AudioSegment
 import torchaudio
 import re
 
+global on_init
+global cosyvoice
+on_init = True
+
 def wav2mp3(wav_path,script_path):
     audio = AudioSegment.from_wav(wav_path)
     audio.export(os.path.join(script_path, "output.mp3"), format="mp3")
@@ -55,8 +59,12 @@ def merge_audio_files(input_filename_form,output_filename, directory):
 
 
 def TTS(text ,prompt_speech_16k_name ,speech_form ,script_path ,generate_mode ,zero_shot_text ,if_trt ,if_fp16 ):
-    cosyvoice = CosyVoice2(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B'), load_jit=False, load_trt=if_trt, fp16=if_fp16)#load model then pass down
-        
+    global on_init
+    global cosyvoice
+    if on_init:
+        cosyvoice = CosyVoice2(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B'), load_jit=False, load_trt=if_trt, fp16=if_fp16)
+        #load model then pass down
+        on_init = False
     prompt_speech_16k = load_wav(os.path.join(script_path,'sounds',prompt_speech_16k_name), 16000)#加载音频文件，码率变为16KHz
 
     
