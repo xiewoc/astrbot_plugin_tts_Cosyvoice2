@@ -27,4 +27,4 @@ eg.
 
 ## for 1.0.6
 
-很多，可以自己看看，更新了指令，取消了预启动（真的不会做）
+更新了指令，取消了预启动（真的不会做），更改了路径（./Cosyvoice/pretrained_models/Cosyvoice2_0.5B -> ./pretrained_models/Cosyvoice2_0.5B）
