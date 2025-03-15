@@ -1,7 +1,9 @@
+###Created by xiewoc(github.com/xiewoc),use under permission
+
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice\\third_party\\Matcha-TTS'))
-sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice\\third_party\\Matcha-TTS'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','third_party','Matcha-TTS'))
+sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','third_party','Matcha-TTS'))
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice'))
 sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice'))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,14 +13,6 @@ from cosyvoice.utils.file_utils import load_wav
 from pydub import AudioSegment
 import torchaudio
 import re
-import logging
-from modelscope.utils.logger import get_logger
-
-logger = get_logger()
-logger.setLevel(logging.ERROR)
-logging.getLogger().setLevel(logging.ERROR)
-
-cosyvoice = CosyVoice2(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice\\pretrained_models\\CosyVoice2-0.5B'), load_jit=False, load_trt=False, fp16=True)
 
 def wav2mp3(wav_path,script_path):
     audio = AudioSegment.from_wav(wav_path)
@@ -60,40 +54,35 @@ def merge_audio_files(input_filename_form,output_filename, directory):
     combined.export(os.path.join(directory,output_filename), format="wav")
 
 
-def TTS(text,prompt_speech_16k_name,speech_form,script_path,generate_mode,zero_shot_text):    
-    prompt_speech_16k = load_wav(os.path.join(script_path,prompt_speech_16k_name), 16000)
-    text = text.replace('\n','').replace('\r','')
+def TTS(text ,prompt_speech_16k_name ,speech_form ,script_path ,generate_mode ,zero_shot_text ,if_trt ,if_fp16 ):
+    cosyvoice = CosyVoice2(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B'), load_jit=False, load_trt=if_trt, fp16=if_fp16)#load model then pass down
+        
+    prompt_speech_16k = load_wav(os.path.join(script_path,'sounds',prompt_speech_16k_name), 16000)#加载音频文件，码率变为16KHz
+
+    
+    text = text.replace('\n','').replace('\r','')#字符处理
     result = re.split(r'[\n。]', text)
-    if generate_mode == 'zero_shot':
-        for t, sp_sentences in enumerate(result):
-            if sp_sentences != '':
+    for t, sp_sentences in enumerate(result):
+        if sp_sentences != '':
+            
+            if generate_mode == 'zero_shot':
                 for i, j in enumerate(cosyvoice.inference_zero_shot(sp_sentences, zero_shot_text, prompt_speech_16k, stream=False)):
                     filename = f'instruct_{t}_{i}.wav'  # 修改文件名以避免重复
                     torchaudio.save(os.path.join(script_path,filename), j['tts_speech'], cosyvoice.sample_rate)
                     # 仅在此处合并当前段落的所有音频片段到一个中间文件
                     merge_audio_files(r'^instruct_%d_\d+\.wav$' % t, f"merged_audio_{t}.wav",script_path)
-            else:
-                pass
-    elif generate_mode == 'instruct2':
-        for t, sp_sentences in enumerate(result):
-            if sp_sentences != '':
+            elif generate_mode == 'instruct2':
                 for i, j in enumerate(cosyvoice.inference_instruct2(sp_sentences, speech_form, prompt_speech_16k, stream=False)):
                     filename = f'instruct_{t}_{i}.wav'  # 修改文件名以避免重复
                     torchaudio.save(os.path.join(script_path,filename), j['tts_speech'], cosyvoice.sample_rate)
-                    # 仅在此处合并当前段落的所有音频片段到一个中间文件
                     merge_audio_files(r'^instruct_%d_\d+\.wav$' % t, f"merged_audio_{t}.wav",script_path)
-            else:
-                pass
-    else:
-        for t, sp_sentences in enumerate(result):
-            if sp_sentences != '':
+            else: #default in instruct mode
                 for i, j in enumerate(cosyvoice.inference_instruct2(sp_sentences, speech_form, prompt_speech_16k, stream=False)):
                     filename = f'instruct_{t}_{i}.wav'  # 修改文件名以避免重复
                     torchaudio.save(os.path.join(script_path,filename), j['tts_speech'], cosyvoice.sample_rate)
-                    # 仅在此处合并当前段落的所有音频片段到一个中间文件
                     merge_audio_files(r'^instruct_%d_\d+\.wav$' % t, f"merged_audio_{t}.wav",script_path)
-            else:
-                pass
+        else:
+            pass
     # 所有句子处理完后，合并所有中间文件
     merge_audio_files(r'^merged_audio_\d+\.wav$', "merged_audio_final.wav",script_path)
     cleanup_temp_files(script_path)

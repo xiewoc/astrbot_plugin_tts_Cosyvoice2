@@ -5,15 +5,20 @@
         "hint": "因为deepseek-r1模型及其衍生模型会以<think>.....</think>的形式输出思考过程，会影响语音合成，如果不是使用deepseek-r1模型及其衍生模型则可忽略",
         "obvious_hint": true
     },
-    "if_preload": {
-        "description": "是否预加载Cosyvoice模型",
-        "type": "bool",
-        "hint": "预启动会增加启动时间，但会有更快速的语音合成体验"
-    },
     "if_reduce_parenthesis": {
         "description": "是否提醒llm减少括号中内容生成",
         "type": "bool",
         "hint": "有些人格设置会影响该设置生效，请酌情使用"
+    },
+    "if_trt": {
+        "description": "是否使用TensorRT加速",
+        "type": "bool",
+        "hint": "需要下载tensorrt库"
+    },
+    "if_fp16": {
+        "description": "是否使用fp16精度减少占用",
+        "type": "bool",
+        "hint": "降低精度可能会影响生成质量，酌情开启"
     },
     "generate_method": {
         "description": "生成模式选择",
@@ -23,9 +28,15 @@
         "default": "instruct2"
     },
     "misc":{
-        "description": "杂项",
+        "description": "配置",
         "type": "object",
         "items": {
+            "source_prompt":{
+                "description": "源音频文件",
+                "type": "string",
+                "hint": "源语音",
+                "default": "prompt_明.wav"
+            },
             "zero_shot_text":{
                 "description": "zero_shot文本",
                 "type": "string",
@@ -38,7 +49,7 @@
                 "type": "string",
                 "hint": "就是用什么话说出来，目前已测：四川话、广东话、普通话",
                 "obvious_hint": true,
-                "default": "用普通话说这句话"
+                "default": "普通话"
             }
         }
     }
