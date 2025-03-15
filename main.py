@@ -151,8 +151,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             "prompt_text": ret[0],  
             "voice": sound  
             }
-        response = requests.post('http://127.0.0.1:5050/config', json=payload)
-        yield event.plain_result(f"结果是: {payload}")
+        requests.post('http://127.0.0.1:5050/config', json=payload)
 
     @set.command("form")
     async def form(self, event: AstrMessageEvent, form:str):
@@ -161,8 +160,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             "prompt_text": "",  
             "voice": "" 
             }
-        response = requests.post('http://127.0.0.1:5050/config', json=payload)
-        yield event.plain_result(f"结果是: {payload}")
+        requests.post('http://127.0.0.1:5050/config', json=payload)
 
     @tts_cfg.command("list")
     async def list(self, event: AstrMessageEvent):
