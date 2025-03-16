@@ -177,19 +177,12 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             req.system_prompt += "请在输出的字段中减少在括号中对动作、心情等的描写，尽量只剩下口语部分"
 
 if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):#克隆仓库
-    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','cosyvoice')):
-        pass
-    else:
-        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
-        run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
     pass
 else:
-    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice','cosyvoice')):
-        pass
-    else:
-        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
-        run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
     base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
     run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
+if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B')):
+    pass
+else:
     from modelscope import snapshot_download
     snapshot_download('iic/CosyVoice2-0.5B', local_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B'))#下载模型
