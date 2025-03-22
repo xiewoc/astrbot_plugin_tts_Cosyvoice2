@@ -9,11 +9,20 @@ from fastapi.responses import FileResponse
 import uvicorn
 
 app = FastAPI()
-global remove_think_tag ,instruct_speech_form ,zero_shot_text ,generate_method ,trt ,fp16 ,source_prompt_file
-global prompt_speech_16k_name ,prompt_speech_form ,prompt_zero_shot_text#较为恒定的变量
+
+global prompt_speech_name ,prompt_speech_dialect ,prompt_zero_shot_text ,generate_method ,if_jit ,if_fp16 ,if_trt 
+#后续传参的变量
+
+global prompt_speech_name_init ,prompt_speech_dialect_init ,prompt_zero_shot_text_init ,generate_method_init ,if_jit_init ,if_fp16_init ,if_trt_init ,if_remove_think_tag_init 
+#初次设定参数的变量(init)
+
 prompt_speech_16k_name = ''
 prompt_speech_form = ''
 prompt_zero_shot_text = ''
+if_remove_think_tag_init = False
+if_jit = False
+if_trt = False
+if_fp16 = False
 
 def remove_thinktag(text):
     if text:
@@ -28,75 +37,67 @@ class SpeechRequest(BaseModel):
     voice: str
 
 class ConfigRequest(BaseModel):#when change configs
-    speech_form:str
+    speech_dialect: str
     prompt_text: str
     voice: str
+    generate_method: str
 
-def run_service(if_remove_think_tag,inpt_instruct_speech_form ,inpt_zero_shot_text ,inpt_generate_method ,if_trt ,if_fp16 ,source_prompt):
-    global remove_think_tag ,instruct_speech_form ,zero_shot_text ,generate_method ,trt ,fp16 ,source_prompt_file
-    
-    remove_think_tag = if_remove_think_tag
-    instruct_speech_form = inpt_instruct_speech_form
-    zero_shot_text = inpt_zero_shot_text
-    generate_method = inpt_generate_method
-    trt = if_trt
-    fp16 = if_fp16
-    source_prompt_file = source_prompt
-    
+class ConfigInitRequest(BaseModel):#when set initial configs
+    speech_dialect: str
+    prompt_text: str
+    voice: str
+    generate_method: str
+    if_jit: bool
+    if_fp16: bool
+    if_trt: bool
+    if_preload: bool
+    if_remove_think_tag: bool
+
+def run_service():
     uvicorn.run(app, host="127.0.0.1", port=5050)
     
 @app.post("/audio/speech")
 async def generate_speech(request: Request, speech_request: SpeechRequest):
-    global remove_think_tag ,instruct_speech_form ,zero_shot_text ,generate_method ,trt ,fp16 ,source_prompt_file
-    
-    # 验证 Authorization 头是否包含正确的 Bearer token
-    auth_header = request.headers.get('authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        raise HTTPException(status_code=401, detail="Unauthorized")
     
     script_path = os.path.dirname(os.path.abspath(__file__))
 
     #源文件名称
-    global prompt_speech_16k_name
-    if prompt_speech_16k_name == '':
-        prompt_speech_16k_name = source_prompt_file
-    else:
-        prompt_speech_16k_name = prompt_speech_16k_name
+    global prompt_speech_name
 
-    #语种
-    global prompt_speech_form
-    if prompt_speech_form == '':
-        speech_form = instruct_speech_form
-    else:
-        speech_form = prompt_speech_form
-    speech_form = '用' + speech_form + '说这句话'
+    #语种（方言）
+    global prompt_speech_dialect
+    speech_dialect = '用' + prompt_speech_dialect + '说这句话'
 
     #zero_shot文字
     global prompt_zero_shot_text
-    if prompt_zero_shot_text == '':
-        zero_shot_text = zero_shot_text
-    else:
-        zero_shot_text = prompt_zero_shot_text
+    
+    global if_jit ,if_fp16 ,if_trt ,generate_method
+    global if_remove_think_tag_init
 
-    print("config:","form:",speech_form,"zeroshot text:",zero_shot_text,"source file:",prompt_speech_16k_name,'\n')
+    print("config:","dialect:",prompt_speech_dialect,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_name,'\n')
+
+    
+
     import tts_tofile as ts
     try:
-        if remove_think_tag == True:
+        global if_remove_think_tag_init
+        if if_remove_think_tag_init == True:
             input_text = remove_thinktag(speech_request.input)
         else:
             input_text = speech_request.input
 
         if input_text != '':
             sound_path = ts.wav2mp3(
-                ts.TTS(
+                await ts.TTS(
                     input_text,
-                    prompt_speech_16k_name,
-                    speech_form,
+                    prompt_speech_name,
+                    speech_dialect,
                     script_path,
                     generate_method,
-                    zero_shot_text,
-                    trt,
-                    fp16
+                    prompt_zero_shot_text,
+                    if_jit,
+                    if_trt,
+                    if_fp16
                     ),
                 script_path
                 )
@@ -115,20 +116,86 @@ async def generate_speech(request: Request, config_request: ConfigRequest):
     
     '''
     class ConfigRequest(BaseModel):#when change configs
-        speech_form:str
-        prompt_text: str
-        voice: str
+            speech_dialect: str
+            prompt_text: str
+            voice: str
+            generate_method: str
     '''
-    global prompt_speech_16k_name ,prompt_speech_form ,prompt_zero_shot_text
+    global prompt_speech_name ,prompt_speech_dialect ,prompt_zero_shot_text ,generate_method
     
-    if config_request.speech_form:
-        prompt_speech_form = config_request.speech_form
+    if config_request.speech_dialect:
+        prompt_speech_dialect = config_request.speech_dialect
+
     if config_request.prompt_text:
         prompt_zero_shot_text = config_request.prompt_text
-    if config_request.voice:
-        prompt_speech_16k_name = config_request.voice
-    print("updated config:","form:",prompt_speech_form,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_16k_name,'\n')
 
+    if config_request.voice:
+        prompt_speech_name = config_request.voice
+
+    if config_request.generate_method:
+        generate_method = config_request.generate_method
+
+    print("updated config:","dialect:",prompt_speech_form,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_16k_name,'\n')
+
+@app.post("/config/init")
+async def generate_speech(request: Request, config_init_request: ConfigInitRequest):
     
+    '''
+    class ConfigInitRequest(BaseModel):#when set initial configs
+    speech_dialect: str
+    prompt_text: str
+    voice: str
+    generate_method: str
+    if_jit: bool
+    if_fp16: bool
+    if_trt: bool
+    if_preload: bool
+    if_remove_think_tag: bool
+
+    '''
+    global prompt_speech_name_init ,prompt_speech_dialect_init ,prompt_zero_shot_text_init ,generate_method_init ,if_jit_init ,if_fp16_init ,if_trt_init ,if_remove_think_tag_init 
+    
+    global prompt_speech_name ,prompt_speech_dialect ,prompt_zero_shot_text ,generate_method ,if_jit ,if_fp16 ,if_trt 
+
+    if config_init_request.voice:#仿制音源
+        prompt_speech_name_init = config_init_request.voice
+        prompt_speech_name = prompt_speech_name_init
+    
+    if config_init_request.speech_dialect:#方言
+        prompt_speech_dialect_init = config_init_request.speech_dialect
+        prompt_speech_dialect = prompt_speech_dialect_init
+
+    if config_init_request.prompt_text:#zeroshot
+        prompt_zero_shot_text_init = config_init_request.prompt_text
+        prompt_zero_shot_text = prompt_zero_shot_text_init
+    
+    if config_init_request.generate_method:#zeroshot
+        generate_method_init = config_init_request.generate_method
+        generate_method = generate_method_init
+
+    if config_init_request.if_jit:#jit
+        if_jit_init = config_init_request.if_jit
+        if_jit = if_jit_init
+
+    if config_init_request.if_fp16:#fp16
+        if_fp16_init = config_init_request.if_fp16
+        if_fp16 = if_fp16_init
+
+    if config_init_request.if_trt:#trt
+        if_trt_init = config_init_request.if_trt
+        if_trt = if_trt_init
+
+    if config_init_request.if_preload:#preload
+        import tts_tofile as ts
+        ts.preload(config_init_request.if_jit,
+                   config_init_request.if_trt,
+                   config_init_request.if_fp16
+                   )
+        
+    if config_init_request.if_remove_think_tag:#remove think tag
+        if_remove_think_tag_init  = config_init_request.if_remove_think_tag
+
+    print("init config:" ,"\n" ,"form:",prompt_speech_dialect ,"\n" ,"zeroshot text:",prompt_zero_shot_text ,"\n" ,"source file:", prompt_speech_name ,"\n" ,"remove_think_tag:" ,if_remove_think_tag_init )
+
 if __name__ == "__main__":
     print("This is a model ,you can't run this seperately.")

@@ -20,6 +20,16 @@
         "type": "bool",
         "hint": "降低精度可能会影响生成质量，酌情开启"
     },
+    "if_jit": {
+        "description": "是否使用jit",
+        "type": "bool",
+        "hint": "所以这是什么？即时编译？"
+    },
+    "if_preload": {
+        "description": "是否预加载模型",
+        "type": "bool",
+        "hint": "快速加载及debug时不建议开启，但若要使用function_call则要开启"
+    },
     "generate_method": {
         "description": "生成模式选择",
         "type": "string",
@@ -44,12 +54,30 @@
                 "obvious_hint": true,
                 "default": "相信我吧，我会带你们走向光明"
             },
-            "instruct_speech_form":{
+            "instruct_speech_dialect":{
                 "description": "instrut生成语音语言形式",
                 "type": "string",
                 "hint": "就是用什么话说出来，目前已测：四川话、广东话、普通话",
                 "obvious_hint": true,
                 "default": "普通话"
+            }
+        }
+    },
+    "serve_config":{
+        "description": "服务器设置",
+        "type": "object",
+        "items": {
+            "server_ip":{
+                "description": "服务器地址",
+                "type": "string",
+                "hint": "若为本机使用则不需要更改,即127.0.0.1",
+                "default": "127.0.0.1"
+            },
+            "if_seperate_serve": {
+                "description": "是否使用分布式部署",
+                "type": "bool",
+                "hint": "开启此选项后，本插件就不会自己启动service.py了，且按照服务器地址去访问api",
+                "default": false
             }
         }
     }
