@@ -64,4 +64,4 @@ eg.
 }
 ```
 
-# 当然，A lot of codes borrowed from Cosyvoice ,show respect to their team
+# 当然，A lot of codes borrowed from Cosyvoice ,show respect to them
