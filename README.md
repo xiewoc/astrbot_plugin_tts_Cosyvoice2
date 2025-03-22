@@ -37,3 +37,31 @@
 ## previous versions
 
 更新了指令，取消了预启动（真的不会做），更改了路径（./Cosyvoice/pretrained_models/Cosyvoice2_0.5B -> ./pretrained_models/Cosyvoice2_0.5B）、在插件配置中添加：TensorRT开关、fp16开关等
+
+# 球球了，给孩子点个star吧！
+
+# 自带音频
+
+目前作者只给了`prompt_绯莎.wav`和`prompt_明.wav`，后续会持续更新，你们也可以自己创建，构建如下：
+
+语音格式应为wav文件，码率不低于16KHz，创建同名.json文件内容如下：
+
+```
+{
+    "text":"语音内容文字（模式若为instruct2则可不填）",
+    "form":"语种（方言），目前支持普通话、四川话、上海话、湖北话等（见cosyvoice官方文档）",
+    "generate_method":"生成模式（zero_shot或instruct2，如果不填，则为instruct2）"
+}
+```
+
+eg.
+
+```
+{
+    "text":"相信我吧，我会带你们走向光明",
+    "form":"普通话",
+    "generate_method":"zero_shot"
+}
+```
+
+# 当然，A lot of codes borrowed from Cosyvoice ,show respect to their team
