@@ -275,7 +275,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             req.system_prompt += "请在输出的字段中减少使用括号括起对动作,心情,表情等的描写，尽量只剩下口语部分"
 
     @llm_tool(name="send_voice_msg") 
-    async def send_voice_msg(self, event: AstrMessageEvent, text: str, dialect: Optional[str]) -> MessageEventResult:
+    async def send_voice_msg(self, event: AstrMessageEvent, text: str, dialect: Optional[str] = None ) -> MessageEventResult:#这边optional了因为怕有的llm会看不懂
         '''发送语音消息。
 
         Args:
