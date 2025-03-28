@@ -13,7 +13,10 @@ from cosyvoice.cli.cosyvoice import CosyVoice2
 from cosyvoice.utils.file_utils import load_wav
 from pydub import AudioSegment
 import torchaudio
+import logging
 import re
+
+logging.getLogger("pydub").setLevel(logging.WARNING) 
 
 global on_init
 global cosyvoice
@@ -28,7 +31,7 @@ def preload(if_jit: bool ,if_trt: bool ,if_fp16: bool):
 
 def wav2mp3(wav_path,script_path):
     audio = AudioSegment.from_wav(wav_path)
-    audio.export(os.path.join(script_path, "output.mp3"), format="mp3")
+    audio.export(os.path.join(script_path, "output.mp3"), format="mp3", parameters=["-loglevel", "quiet"])
     os.remove(wav_path)
     mp3_path = os.path.join(script_path, "output.mp3")
     return mp3_path
@@ -63,7 +66,7 @@ def merge_audio_files(input_filename_form,output_filename, directory):
         audio = AudioSegment.from_wav(audio_path)
         combined += audio  # 合并音频
 
-    combined.export(os.path.join(directory,output_filename), format="wav")
+    combined.export(os.path.join(directory,output_filename), format="wav", parameters=["-loglevel", "quiet"])
 
 def is_all_chinese(text):#判断是否全是中文
     # 使用正则表达式匹配中文字符
@@ -86,7 +89,7 @@ async def TTS(text: str ,prompt_speech_name: str ,speech_form: str ,script_path:
     if is_all_chinese(text):
         result = re.split(r'[\n。]', text)#如果是全中文则以'。'断句
     else:
-        result = re.split(r'[\n.]', text)#其他语种则以'.'断句
+        result = re.split(r'(?<!\d)\.(?!\d)|[\n]', text)#其他语种则以'.'断句
 
     for t, sp_sentences in enumerate(result):
         if sp_sentences != '':

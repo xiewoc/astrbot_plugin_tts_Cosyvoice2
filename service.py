@@ -76,8 +76,6 @@ async def generate_speech(request: Request, speech_request: SpeechRequest):
 
     print("config:","dialect:",prompt_speech_dialect,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_name,'\n')
 
-    
-
     import tts_tofile as ts
     try:
         global if_remove_think_tag_init
@@ -135,7 +133,7 @@ async def generate_speech(request: Request, config_request: ConfigRequest):
     if config_request.generate_method:
         generate_method = config_request.generate_method
 
-    print("updated config:","dialect:",prompt_speech_form,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_16k_name,'\n')
+    print("updated config:","dialect:",prompt_speech_dialect,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_name,"method:",generate_method,'\n')
 
 @app.post("/config/init")
 async def generate_speech(request: Request, config_init_request: ConfigInitRequest):
@@ -195,7 +193,7 @@ async def generate_speech(request: Request, config_init_request: ConfigInitReque
     if config_init_request.if_remove_think_tag:#remove think tag
         if_remove_think_tag_init  = config_init_request.if_remove_think_tag
 
-    print("init config:" ,"\n" ,"form:",prompt_speech_dialect ,"\n" ,"zeroshot text:",prompt_zero_shot_text ,"\n" ,"source file:", prompt_speech_name ,"\n" ,"remove_think_tag:" ,if_remove_think_tag_init )
+    print("init config:" ,"\n" ,"form:",prompt_speech_dialect ,"\n" ,"zeroshot text:",prompt_zero_shot_text ,"\n" ,"source file:", prompt_speech_name ,"\n" ,"method:" ,generate_method ,"\n" ,"remove_think_tag:" ,if_remove_think_tag_init ,"\t")
 
 if __name__ == "__main__":
     print("This is a model ,you can't run this seperately.")

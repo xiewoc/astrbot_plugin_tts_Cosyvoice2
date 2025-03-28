@@ -98,6 +98,18 @@ def load_json_config(file_name):# return text
         print(f"未找到匹配的.json文件,使用默认模式")
         return []
 
+def find_wav_and_json_files(directory):
+    # 改变当前工作目录到指定目录
+    os.chdir(directory)
+    all_files = ''
+    # 查找所有.wav文件
+    wav_files = glob.glob('*.wav')
+    
+    for count , wav_file in enumerate(wav_files):
+        all_files += wav_file + '\n'
+    all_files += '共' + str(count + 1) + '个音源文件'#从0计数故加一
+    return all_files
+
 def download_model_and_repo():
     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):#克隆仓库
         pass
@@ -109,17 +121,6 @@ def download_model_and_repo():
     else:
         from modelscope import snapshot_download
         snapshot_download('iic/CosyVoice2-0.5B', local_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B'))#下载模型
-
-def find_wav_and_json_files(directory):
-    # 改变当前工作目录到指定目录
-    os.chdir(directory)
-    all_files = ''
-    # 查找所有.wav文件
-    wav_files = glob.glob('*.wav')
-    
-    for wav_file in wav_files:
-        all_files += wav_file + '\n'
-    return all_files
 
 def run_command(command):#cmd line  git required!!!!
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -179,7 +180,7 @@ def terminate_child_process_on_exit(child_process):
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "extention in astrbot for tts using local Cosyvoice2-0.5b model to create api in OpenAI_tts_api form", "1.0.7", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "使用Cosyvoice2:0.5B对Astrbot的tts进行补充", "1.0.8", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class astrbot_plugin_tts_Cosyvoice2(Star):
     def __init__(self, context: Context,config: dict):
         super().__init__(context)
@@ -251,7 +252,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
     @set.command("dialect")
     async def dialect(self, event: AstrMessageEvent, dialect: str):
         global server_ip
-        request_config(dialect ,'' , '', '', server_ip)
+        request_config(dialect ,'' , '', 'instruct2', server_ip)
         yield event.plain_result(f"方言更换成功: {dialect}")
 
     @set.command("method")
@@ -272,18 +273,20 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         if reduce_parenthesis == True:
             req.system_prompt += "请在输出的字段中减少使用括号括起对动作,心情,表情等的描写，尽量只剩下口语部分"
 
-    @llm_tool(name="send_vocal_msg") 
-    async def send_vocal_msg(self, event: AstrMessageEvent, text: str) -> MessageEventResult:
+    @llm_tool(name="send_voice_msg") 
+    async def send_voice_msg(self, event: AstrMessageEvent, text: str, dialect: str) -> MessageEventResult:
         '''发送语音消息。
 
         Args:
             text(string): 要转语音的文字
+            dialect(string): 方言（若未说明则用''）
         '''
         if text != '':
+            if dialect != '':
+                global server_ip
+                request_config(dialect ,'' , '', 'instruct2', server_ip)
             path = await request_tts(text)#返回的是mp3文件
             chain = [
                 Record.fromFileSystem(path)
                 ]
             yield event.chain_result(chain)
-        #if text_not_to_tts != '':
-        #    yield event.plain_result(text_not_to_tts)
