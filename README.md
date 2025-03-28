@@ -30,13 +30,15 @@
 
 # 更新内容
 
-## for 1.0.7
+## for 1.0.8
 
-将传参方式大改了一下；重新加回了预加载；更新了`/tts_cfg set method xxx`指令，用以更换生成方式；支持了分布式部署；支持了function_call功能；优化了整体结构；
+再function_call功能中加入了可调整的方言（即：text: str, dialect: str）；在更改方言时自动更改生成模式（只有instruct2支持方言）；更改了在使用其他语言时的断句条件（result = re.split(r'(?<!\d)\.(?!\d)|[\n]', text)#其他语种则以'.'断句）
 
 ## previous versions
 
-更新了指令，取消了预启动（真的不会做），更改了路径（./Cosyvoice/pretrained_models/Cosyvoice2_0.5B -> ./pretrained_models/Cosyvoice2_0.5B）、在插件配置中添加：TensorRT开关、fp16开关等
+更新了指令，更改了路径（./Cosyvoice/pretrained_models/Cosyvoice2_0.5B -> ./pretrained_models/Cosyvoice2_0.5B）、在插件配置中添加：TensorRT开关、fp16开关等
+
+将传参方式大改了一下；重新加回了预加载；更新了`/tts_cfg set method xxx`指令，用以更换生成方式；支持了分布式部署；支持了function_call功能；优化了整体结构；（1.0.7）
 
 # 球球了，给孩子点个star吧！
 
@@ -64,4 +66,4 @@ eg.
 }
 ```
 
-# 当然，A lot of codes borrowed from Cosyvoice ,show respect to them
+# 当然，A lot of codes borrowed from Cosyvoice 
