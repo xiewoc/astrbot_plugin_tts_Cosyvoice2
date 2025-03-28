@@ -32,7 +32,7 @@
 
 ## for 1.0.8
 
-再function_call功能中加入了可调整的方言（即：text: str, dialect: str）；在更改方言时自动更改生成模式（只有instruct2支持方言）；更改了在使用其他语言时的断句条件（result = re.split(r'(?<!\d)\.(?!\d)|[\n]', text)#其他语种则以'.'断句）
+再function_call功能中加入了可调整的方言（即：`text: str, dialect: str`）；在更改方言时自动更改生成模式（只有instruct2支持方言）；更改了在使用其他语言时的断句条件（`result = re.split(r'(?<!\d)\.(?!\d)|[\n]', text)#其他语种则以'.'断句`）
 
 ## previous versions
 
