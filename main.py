@@ -283,7 +283,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             dialect(string): 方言（若未说明则填入 '普通话'）
         '''
         if text != '':
-            if dialect != '':
+            if dialect != None:
                 global server_ip
                 request_config(dialect ,'' , '', 'instruct2', server_ip)
             path = await request_tts(text)#返回的是mp3文件
