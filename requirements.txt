@@ -44,3 +44,7 @@ ffmpeg==1.4
 ffmpy==0.5.0
 ffprobe==0.5
 filelock==3.13.1
+glob
+requests
+asyncio
+json

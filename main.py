@@ -1,19 +1,20 @@
 #有关tts的详细配置请移步service.py
-from astrbot.api.all import *
+from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+from astrbot.api.star import Context, Star, register
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.provider import LLMResponse
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.message_components import *
-from astrbot.api.star import Context, Star, register
+from multiprocessing import Process
+from astrbot.api.all import *
+from typing import Optional
+import subprocess
+import requests
+import asyncio
+import atexit
+import glob
+import json
 import sys
 import os
-from multiprocessing import Process
-from typing import Optional
-import atexit
-import subprocess
-import glob
-import requests
-import json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -57,7 +58,7 @@ async def request_tts(text: str):
         print("Server url is void, please check your settings")
         return ''
 
-def request_config(speech_dialect: str ,prompt_text: str ,prompt_file_name: str ,generate_method: str ,ip:str):
+async def request_config(speech_dialect: str ,prompt_text: str ,prompt_file_name: str ,generate_method: str ,ip:str):
     payload = {
             "speech_dialect": speech_dialect,  
             "prompt_text": prompt_text,  
@@ -68,7 +69,7 @@ def request_config(speech_dialect: str ,prompt_text: str ,prompt_file_name: str 
     ret = requests.post(url, json=payload, timeout=(10, 30))
     return ret
 
-def request_config_init(speech_dialect: str ,prompt_text: str ,prompt_file_name: str ,generate_method: str ,if_jit: bool ,if_trt: bool ,if_fp16: bool ,if_preload: bool ,if_remove_think_tag: bool ,ip: str):
+async def request_config_init(speech_dialect: str ,prompt_text: str ,prompt_file_name: str ,generate_method: str ,if_jit: bool ,if_trt: bool ,if_fp16: bool ,if_preload: bool ,if_remove_think_tag: bool ,ip: str):
     payload = {
             "speech_dialect": speech_dialect,  
             "prompt_text": prompt_text,  
@@ -81,7 +82,8 @@ def request_config_init(speech_dialect: str ,prompt_text: str ,prompt_file_name:
             "if_remove_think_tag": if_remove_think_tag
             }
     url = 'http://' + ip + ':5050/config/init'
-    ret = requests.post(url, json=payload, timeout=(60, 90))
+    await asyncio.sleep(5)#等待fastapi启动
+    ret = requests.post(url, json=payload, timeout=(10, 60))
     return ret
 
 def load_json_config(file_name):# return text
@@ -181,7 +183,7 @@ def terminate_child_process_on_exit(child_process):
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "使用Cosyvoice2:0.5B对Astrbot的tts进行补充", "1.0.8", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "使用Cosyvoice2:0.5B对Astrbot的tts进行补充", "1.0.9", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class astrbot_plugin_tts_Cosyvoice2(Star):
     def __init__(self, context: Context,config: dict):
         super().__init__(context)
@@ -208,26 +210,35 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         if_fp16 = self.config['if_fp16']
         if_jit =  self.config['if_jit']
         if_preload =  self.config['if_preload']
+        global if_seperate_serve
+        if_seperate_serve = sub_config_serve.get('if_seperate_serve', '')
+        
+        #加载完成时
+        @filter.on_astrbot_loaded()
+        async def on_astrbot_loaded(self):
+            global server_ip
+            global if_seperate_serve
+            global if_remove_think_tag ,instruct_speech_dialect ,zero_shot_text ,generate_method ,if_trt ,if_fp16 ,if_jit ,if_preload ,source_prompt
 
-        if sub_config_serve.get('if_seperate_serve', ''):#若为分布式部署
-            pass
-        else:
-            child_process = start_child_process()
-            if child_process:
-                terminate_child_process_on_exit(child_process)
+            if if_seperate_serve:#若为分布式部署
+                pass
+            else:
+                child_process = start_child_process()
+                if child_process:
+                    terminate_child_process_on_exit(child_process)
 
-        request_config_init(
-            instruct_speech_dialect,
-            zero_shot_text,
-            source_prompt,
-            generate_method,
-            if_jit,
-            if_trt,
-            if_fp16,
-            if_preload,
-            if_remove_think_tag,
-            server_ip
-                )
+            await request_config_init(
+                instruct_speech_dialect,
+                zero_shot_text,
+                source_prompt,
+                generate_method,
+                if_jit,
+                if_trt,
+                if_fp16,
+                if_preload,
+                if_remove_think_tag,
+                server_ip
+                    )
 
     @filter.command_group("tts_cfg")
     def tts_cfg(self):
@@ -245,21 +256,21 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         '''
         global server_ip
         if ret == []:
-            request_config('普通话', '', prompt_file_name, 'instruct2', server_ip)
+            await request_config('普通话', '', prompt_file_name, 'instruct2', server_ip)
         else:
-            request_config(ret[1], ret[0], prompt_file_name, ret[2], server_ip)
+            await request_config(ret[1], ret[0], prompt_file_name, ret[2], server_ip)
         yield event.plain_result(f"音源更换成功: {prompt_file_name}")
 
     @set.command("dialect")
     async def dialect(self, event: AstrMessageEvent, dialect: str):
         global server_ip
-        request_config(dialect ,'' , '', 'instruct2', server_ip)
+        await request_config(dialect ,'' , '', 'instruct2', server_ip)
         yield event.plain_result(f"方言更换成功: {dialect}")
 
     @set.command("method")
     async def method(self, event: AstrMessageEvent, method: str):
         global server_ip
-        request_config('' ,'' , '', method, server_ip)
+        await request_config('' ,'' , '', method, server_ip)
         yield event.plain_result(f"生成方式更换成功: {method}")
 
     @tts_cfg.command("list")
