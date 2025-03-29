@@ -35,7 +35,7 @@ async def request_tts(text: str):
         url = 'http://' + server_ip + ':5050/audio/speech'
         try:
             # 设置超时时间为60秒
-            response = requests.post(url, json=payload, stream=True, timeout=(5, 60))
+            response = requests.post(url, json=payload, stream=True, timeout=(10, 60))
             if response.status_code == 200:
                 # 打开一个本地文件用于写入
                 file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'file_receive.mp3')
@@ -65,7 +65,7 @@ def request_config(speech_dialect: str ,prompt_text: str ,prompt_file_name: str 
             "generate_method": generate_method
             }
     url = 'http://' + ip + ':5050/config'
-    ret = requests.post(url, json=payload, timeout=(10, 20))
+    ret = requests.post(url, json=payload, timeout=(10, 30))
     return ret
 
 def request_config_init(speech_dialect: str ,prompt_text: str ,prompt_file_name: str ,generate_method: str ,if_jit: bool ,if_trt: bool ,if_fp16: bool ,if_preload: bool ,if_remove_think_tag: bool ,ip: str):
@@ -81,7 +81,7 @@ def request_config_init(speech_dialect: str ,prompt_text: str ,prompt_file_name:
             "if_remove_think_tag": if_remove_think_tag
             }
     url = 'http://' + ip + ':5050/config/init'
-    ret = requests.post(url, json=payload, timeout=(20, 45))
+    ret = requests.post(url, json=payload, timeout=(60, 90))
     return ret
 
 def load_json_config(file_name):# return text
