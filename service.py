@@ -7,6 +7,8 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 import uvicorn
+import json
+import glob
 
 app = FastAPI()
 
@@ -23,6 +25,33 @@ if_remove_think_tag_init = False
 if_jit = False
 if_trt = False
 if_fp16 = False
+
+def load_json_config(file_name):# return text
+    base_name = os.path.splitext(file_name)[0]
+    # 构建对应的.json文件名
+    json_file = f"{base_name}.json"
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'sounds',json_file)
+    # 检查对应的.json文件是否存在
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+            ret_list = [data.get('text'),data.get('form'),data.get('generate_method')]
+            return ret_list
+    else:
+        print(f"未找到匹配的.json文件,使用默认模式")
+        return []
+
+def find_wav_and_json_files(directory):
+    # 改变当前工作目录到指定目录
+    os.chdir(directory)
+    all_files = ''
+    # 查找所有.wav文件
+    wav_files = glob.glob('*.wav')
+    
+    for count , wav_file in enumerate(wav_files):
+        all_files += wav_file + '\n'
+    all_files += '共' + str(count + 1) + '个音源文件'#从0计数故加一
+    return all_files
 
 def remove_thinktag(text):
     if text:
@@ -53,8 +82,14 @@ class ConfigInitRequest(BaseModel):#when set initial configs
     if_preload: bool
     if_remove_think_tag: bool
 
+class LoadJsonRequest(BaseModel):
+    prompt_file_name:str
+
+class WaveFileListRequest(BaseModel):
+    if_request: bool
+
 def run_service():
-    uvicorn.run(app, host="127.0.0.1", port=5050)
+    uvicorn.run(app, host="0.0.0.0", port=5050)
     
 @app.post("/audio/speech")
 async def generate_speech(request: Request, speech_request: SpeechRequest):
@@ -109,8 +144,58 @@ async def generate_speech(request: Request, speech_request: SpeechRequest):
     # 使用FileResponse返回生成的语音文件
     return FileResponse(path=sound_path, media_type='audio/mp3', filename="output.mp3")
 
+@app.post("/audio/speech/wav")
+async def generate_speech(request: Request, speech_request: SpeechRequest):
+    
+    script_path = os.path.dirname(os.path.abspath(__file__))
+
+    #源文件名称
+    global prompt_speech_name
+
+    #语种（方言）
+    global prompt_speech_dialect
+    speech_dialect = '用' + prompt_speech_dialect + '说这句话'
+
+    #zero_shot文字
+    global prompt_zero_shot_text
+    
+    global if_jit ,if_fp16 ,if_trt ,generate_method
+    global if_remove_think_tag_init
+
+    print("config:","dialect:",prompt_speech_dialect,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_name,'\n')
+
+    import tts_tofile as ts
+    try:
+        global if_remove_think_tag_init
+        if if_remove_think_tag_init == True:
+            input_text = remove_thinktag(speech_request.input)
+        else:
+            input_text = speech_request.input
+
+        if input_text != '':
+            sound_path = await ts.TTS(
+                    input_text,
+                    prompt_speech_name,
+                    speech_dialect,
+                    script_path,
+                    generate_method,
+                    prompt_zero_shot_text,
+                    if_jit,
+                    if_trt,
+                    if_fp16
+                    )
+        else:
+            return ''
+        
+        if not sound_path or not os.path.exists(sound_path) or not os.access(sound_path, os.R_OK):
+            raise HTTPException(status_code=500, detail="Failed to generate speech")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    # 使用FileResponse返回生成的语音文件
+    return FileResponse(path=sound_path, media_type='audio/wav', filename="merged_audio_final.wav")
+
 @app.post("/config")
-async def generate_speech(request: Request, config_request: ConfigRequest):
+async def set_config(request: Request, config_request: ConfigRequest):
     
     '''
     class ConfigRequest(BaseModel):#when change configs
@@ -136,7 +221,7 @@ async def generate_speech(request: Request, config_request: ConfigRequest):
     print("updated config:","dialect:",prompt_speech_dialect,"zeroshot text:",prompt_zero_shot_text,"source file:",prompt_speech_name,"method:",generate_method,'\n')
 
 @app.post("/config/init")
-async def generate_speech(request: Request, config_init_request: ConfigInitRequest):
+async def set_init_config(request: Request, config_init_request: ConfigInitRequest):
     
     '''
     class ConfigInitRequest(BaseModel):#when set initial configs
@@ -194,6 +279,20 @@ async def generate_speech(request: Request, config_init_request: ConfigInitReque
         if_remove_think_tag_init  = config_init_request.if_remove_think_tag
 
     print("init config:" ,"\n" ,"form:",prompt_speech_dialect ,"\n" ,"zeroshot text:",prompt_zero_shot_text ,"\n" ,"source file:", prompt_speech_name ,"\n" ,"method:" ,generate_method ,"\n" ,"remove_think_tag:" ,if_remove_think_tag_init ,"\t")
+
+@app.post("/config/json")
+async def set_init_config(request: Request, json_request: LoadJsonRequest):
+    ret = load_json_config(json_request.prompt_file_name)
+    return ret
+    
+@app.post("/list/wav")
+async def set_init_config(request: Request, wav_request: WaveFileListRequest):
+    if wav_request.if_request:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'sounds')
+        ret = find_wav_and_json_files(path)
+        return ret
+    else:
+        return ""
 
 if __name__ == "__main__":
     print("This is a model ,you can't run this seperately.")

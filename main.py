@@ -21,6 +21,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 global on_init ,reduce_parenthesis
 on_init = True
 reduce_parenthesis = False
+# 锁文件路径
+lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_process.lock")
 
 global server_ip
 global if_remove_think_tag ,instruct_speech_dialect ,zero_shot_text ,generate_method ,if_trt ,if_fp16 ,if_jit ,if_preload ,source_prompt
@@ -33,13 +35,13 @@ async def request_tts(text: str):
     }
     global server_ip
     if server_ip != '':
-        url = 'http://' + server_ip + ':5050/audio/speech'
+        url = 'http://' + server_ip + ':5050/audio/speech/wav'
         try:
             # 设置超时时间为60秒
             response = requests.post(url, json=payload, stream=True, timeout=(10, 60))
             if response.status_code == 200:
                 # 打开一个本地文件用于写入
-                file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'file_receive.mp3')
+                file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'file_receive.wav')
                 with open(file_path, 'wb') as file:
                     # 逐块写入文件
                     for chunk in response.iter_content(chunk_size=8192):
@@ -86,32 +88,21 @@ async def request_config_init(speech_dialect: str ,prompt_text: str ,prompt_file
     ret = requests.post(url, json=payload, timeout=(10, 60))
     return ret
 
-def load_json_config(file_name):# return text
-    base_name = os.path.splitext(file_name)[0]
-    # 构建对应的.json文件名
-    json_file = f"{base_name}.json"
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'sounds',json_file)
-    # 检查对应的.json文件是否存在
-    if os.path.exists(path):
-        with open(path, 'r', encoding='utf-8') as file:
-            data = json.load(file)
-            ret_list = [data.get('text'),data.get('form'),data.get('generate_method')]
-            return ret_list
-    else:
-        print(f"未找到匹配的.json文件,使用默认模式")
-        return []
+async def request_json_cfg(prompt_file_name: str, ip: str):
+    payload = {
+        "prompt_file_name": prompt_file_name
+        }
+    url = 'http://' + ip + ':5050/config/json'
+    ret = requests.post(url, json=payload, timeout=(10, 60))
+    return ret.json()
 
-def find_wav_and_json_files(directory):
-    # 改变当前工作目录到指定目录
-    os.chdir(directory)
-    all_files = ''
-    # 查找所有.wav文件
-    wav_files = glob.glob('*.wav')
-    
-    for count , wav_file in enumerate(wav_files):
-        all_files += wav_file + '\n'
-    all_files += '共' + str(count + 1) + '个音源文件'#从0计数故加一
-    return all_files
+async def request_wave_list(if_request: bool, ip: str):
+    payload = {
+        "if_request": if_request
+        }
+    url = 'http://' + ip + ':5050/list/wav'
+    ret = requests.post(url, json=payload, timeout=(10, 60))
+    return ret.json()
 
 def download_model_and_repo():
     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):#克隆仓库
@@ -131,9 +122,6 @@ def run_command(command):#cmd line  git required!!!!
     if error:
         print(f"Error: {error.decode()}")
     return output.decode()
-
-# 锁文件路径
-lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_process.lock")
 
 def cleanup():
     """清理函数，用于在程序结束时删除锁文件"""
@@ -183,7 +171,7 @@ def terminate_child_process_on_exit(child_process):
         cleanup()
     atexit.register(cleanup_on_exit)
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "使用Cosyvoice2:0.5B对Astrbot的tts进行补充", "1.0.9", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "使用Cosyvoice2:0.5B对Astrbot的tts进行补充", "1.1.0", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class astrbot_plugin_tts_Cosyvoice2(Star):
     def __init__(self, context: Context,config: dict):
         super().__init__(context)
@@ -250,11 +238,12 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
     
     @set.command("voice")
     async def voice(self, event: AstrMessageEvent, prompt_file_name: str):
-        ret = load_json_config(prompt_file_name)#fomant: list
         '''
         request_config(speech_dialect:str,prompt_text:str,prompt_file_name:str,ip:str)
         '''
         global server_ip
+        
+        ret = await request_json_cfg(prompt_file_name,server_ip)
         if ret == []:
             await request_config('普通话', '', prompt_file_name, 'instruct2', server_ip)
         else:
@@ -275,8 +264,8 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
 
     @tts_cfg.command("list")
     async def list(self, event: AstrMessageEvent):
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'sounds')
-        opt = str(find_wav_and_json_files(path))
+        global server_ip
+        opt = str(await request_wave_list(True,server_ip))
         yield event.plain_result(opt)
     
     @filter.on_llm_request()
@@ -297,7 +286,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             if dialect != None:
                 global server_ip
                 request_config(dialect ,'' , '', 'instruct2', server_ip)
-            path = await request_tts(text)#返回的是mp3文件
+            path = await request_tts(text)#返回的是wav文件
             chain = [
                 Record.fromFileSystem(path)
                 ]
