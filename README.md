@@ -21,11 +21,11 @@
 `/tts_cfg`（命令组）：
 
 ```
-/tts_cfg┒
-        ┠set ┰voice
-        ┃    ┠dialect
-        ┃    ┖method
-        ┖list
+/tts_cfg ┒
+         ┠set ┰voice    #声音(.wav)
+         ┃    ┠dialect  #方言/语言
+         ┃    ┖method   #生成方式
+         ┖list           #列出所有.wav音源
 ```
 
 # 更新内容
@@ -71,4 +71,5 @@ eg.
 ```
 
 # 当然，A lot of codes borrowed from Cosyvoice 
+
 
