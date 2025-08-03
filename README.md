@@ -8,7 +8,7 @@
 
 将[Cosyvoice官方文档](https://www.modelscope.cn/models/iic/CosyVoice2-0.5B/summary)中的操作做一遍，检查是否有遗漏的库未安装
 
-再使用命令 `pip  install -r requirements.txt` 在shell安装所需库
+再使用命令 `pip install -r requirements.txt` 在shell安装所需库
 
 与官方tts方法一致，配置时用openai_tts_api，api填入127.0.0.1:5050，超时建议在60~90s左右，key随意
 
@@ -71,5 +71,6 @@ eg.
 ```
 
 # 当然，A lot of codes borrowed from Cosyvoice 
+
 
 
