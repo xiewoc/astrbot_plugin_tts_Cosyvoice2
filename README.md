@@ -4,7 +4,7 @@
 
 # 配置
 
-### 需要ffmpeg在系统路径下！
+<h1>需要ffmpeg在系统路径下！</h1> 
 
 将[Cosyvoice官方文档](https://www.modelscope.cn/models/iic/CosyVoice2-0.5B/summary)中的操作做一遍，检查是否有遗漏的库未安装
 
@@ -21,11 +21,11 @@
 `/tts_cfg`（命令组）：
 
 ```
-/tts_cfg
-|-set|-voice
-|    |-dialect
-|    |-method
-|-list
+/tts_cfg┒
+        ┠set ┰voice
+        ┃    ┠dialect
+        ┃    ┖method
+        ┖list
 ```
 
 # 更新内容
@@ -71,3 +71,4 @@ eg.
 ```
 
 # 当然，A lot of codes borrowed from Cosyvoice 
+
