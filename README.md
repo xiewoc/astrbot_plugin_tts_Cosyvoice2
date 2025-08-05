@@ -28,6 +28,12 @@
          ┖list           #列出所有.wav音源
 ```
 
+## TODO
+
+>1.添加精细控制(grand_control)
+>2.添加可以直接更改zero_shot_text的指令
+>3.将request库改为aiohttp
+
 # 更新内容
 
 ## for 1.1.0
@@ -71,6 +77,7 @@ eg.
 ```
 
 # 当然，A lot of codes borrowed from Cosyvoice 
+
 
 
 
