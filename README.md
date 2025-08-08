@@ -35,6 +35,8 @@
 >2.添加可以直接更改zero_shot_text的指令
 >
 >3.将request库改为aiohttp
+>
+>4.添加apikey验证
 
 # 更新内容
 
@@ -79,6 +81,7 @@ eg.
 ```
 
 # 当然，A lot of codes borrowed from Cosyvoice 
+
 
 
 
