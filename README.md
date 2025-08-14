@@ -79,8 +79,12 @@ eg.
     "generate_method":"zero_shot"
 }
 ```
+如出现问题欢迎issue，PR
+
+也可以进QQ群提问：`823193982`
 
 # 当然，A lot of codes borrowed from Cosyvoice 
+
 
 
 
