@@ -10,6 +10,10 @@
         "type": "bool",
         "hint": "有些人格设置会影响该设置生效，请酌情使用"
     },
+    "if_remove_emoji": {
+        "description": "是否去除句子里的表情(emoji)",
+        "type": "bool"
+    },
     "if_trt": {
         "description": "是否使用TensorRT加速",
         "type": "bool",

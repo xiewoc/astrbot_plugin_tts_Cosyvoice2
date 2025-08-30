@@ -1,22 +1,16 @@
 #有关tts的详细配置请移步service.py
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
-from astrbot.api.star import Context, Star, register
-from astrbot.api.provider import ProviderRequest
-from astrbot.api.provider import LLMResponse
-from astrbot.api.message_components import *
+from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult          # pyright: ignore[reportMissingImports] 
+from astrbot.api.star import Context, Star, register                                # pyright: ignore[reportMissingImports] 
+from astrbot.api.provider import ProviderRequest                                    # pyright: ignore[reportMissingImports] 
+from astrbot.api.message_components import *                                        # pyright: ignore[reportMissingImports] 
+from astrbot.api import logger                                                      # pyright: ignore[reportMissingImports]
+from astrbot.core.utils.astrbot_path import get_astrbot_data_path                   # pyright: ignore[reportMissingImports]
 from multiprocessing import Process
-from astrbot.api.all import *
-from typing import Optional
-import subprocess
-import requests
+from typing import Callable, Optional, Any
+from pathlib import Path
+import aiohttp
 import asyncio
-import atexit
-import glob
-import json
-import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 global on_init ,reduce_parenthesis
 on_init = True
@@ -24,209 +18,357 @@ reduce_parenthesis = False
 # 锁文件路径
 lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_process.lock")
 
-global server_ip
-global if_remove_think_tag ,instruct_speech_dialect ,zero_shot_text ,generate_method ,if_trt ,if_fp16 ,if_jit ,if_preload ,source_prompt
 
-async def request_tts(text: str):
-    payload = {
-        "model": "",
-        "input": text,
-        "voice": ""
-    }
-    global server_ip
-    if server_ip != '':
-        url = 'http://' + server_ip + ':5050/audio/speech/wav'
-        try:
-            # 设置超时时间为60秒
-            response = requests.post(url, json=payload, stream=True, timeout=(10, 60))
-            if response.status_code == 200:
-                # 打开一个本地文件用于写入
-                file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'file_receive.wav')
-                with open(file_path, 'wb') as file:
-                    # 逐块写入文件
-                    for chunk in response.iter_content(chunk_size=8192):
-                        file.write(chunk)
-                    return file_path
-            else:
-                print(f"请求失败，状态码: {response.status_code}")
-                return ''
-        except requests.exceptions.Timeout:
-            print("请求超时，服务器未在60秒内响应")
-            return ''
-        except requests.exceptions.RequestException as e:
-            print(f"请求发生错误: {e}")
-            return ''
-    else:
-        print("Server url is void, please check your settings")
-        return ''
+temp_dir = os.path.join(get_astrbot_data_path(), "temp")
+output_path = os.path.join(temp_dir,"output.wav")
 
-async def request_config(speech_dialect: str ,prompt_text: str ,prompt_file_name: str ,generate_method: str ,ip:str):
-    payload = {
-            "speech_dialect": speech_dialect,  
-            "prompt_text": prompt_text,  
-            "voice": prompt_file_name ,
-            "generate_method": generate_method
-            }
-    url = 'http://' + ip + ':5050/config'
-    ret = requests.post(url, json=payload, timeout=(10, 30))
-    return ret
+class RequestTTSandConfig():
+    def __init__(self):
+        self.port = "5050"
 
-async def request_config_init(speech_dialect: str ,prompt_text: str ,prompt_file_name: str ,generate_method: str ,if_jit: bool ,if_trt: bool ,if_fp16: bool ,if_preload: bool ,if_remove_think_tag: bool ,ip: str):
-    payload = {
-            "speech_dialect": speech_dialect,  
-            "prompt_text": prompt_text,  
-            "voice": prompt_file_name,
+    async def async_retry_request(
+            self,
+            request_func: Callable,
+            max_retries: int = 20,
+            initial_retry_delay: float = 1.0,
+            max_retry_delay: float = 60.0,
+            backoff_factor: float = 2.0,
+            retry_exceptions: tuple = (asyncio.TimeoutError, aiohttp.ClientError),
+            **kwargs
+        ) -> Any:
+        """
+        通用的异步重试请求函数
+        
+        Args:
+            request_func: 要执行的请求函数
+            max_retries: 最大重试次数
+            initial_retry_delay: 初始重试延迟（秒）
+            max_retry_delay: 最大重试延迟（秒）
+            backoff_factor: 退避因子
+            retry_exceptions: 需要重试的异常类型
+            **kwargs: 传递给请求函数的参数
+        
+        Returns:
+            请求函数的返回结果
+        
+        Raises:
+            ConnectionError: 所有重试都失败时抛出
+            Exception: 不可重试的异常
+        """
+        retry_count = 0
+        last_error = None
+        
+        while retry_count <= max_retries:
+            try:
+                result = await request_func(**kwargs)
+                return result
+                
+            except retry_exceptions as e:
+                last_error = e
+                retry_count += 1
+                if retry_count > max_retries:
+                    break
+                    
+                delay = min(
+                    initial_retry_delay * (backoff_factor ** (retry_count - 1)),
+                    max_retry_delay
+                )
+                
+                logger.warning(
+                    f"请求失败({str(e)}), 正在进行第 {retry_count}/{max_retries} 次重试, "
+                    f"等待 {delay:.1f} 秒后重试..."
+                )
+                
+                await asyncio.sleep(delay)
+                
+            except Exception as e:
+                logger.error(f"发生不可重试的错误: {str(e)}")
+                raise
+        
+        logger.error(f"所有重试均失败, 最后错误: {str(last_error)}")
+        raise ConnectionError(f"无法完成请求, 重试 {max_retries} 次后失败") from last_error
+
+    # 具体的请求函数
+    async def _post_config_request(
+            self,
+            server_ip: str,
+            port: str,
+            speech_name: str,
+            prompt_text: str,
+            speech_dialect: str,
+            generate_method,
+            CORRECT_API_KEY: str,
+            timeout_seconds: Optional[float] = 60.0,
+            **kwargs
+        ) -> dict:
+        """具体的POST配置请求实现"""
+        url = f"http://{server_ip}:{port}/config"
+        payload = {
+            "speech_name": speech_name,
+            "prompt_text": prompt_text,
+            "speech_dialect": speech_dialect,
             "generate_method": generate_method,
-            "if_jit": if_jit,
-            "if_trt": if_trt,
-            "if_fp16": if_fp16,
-            "if_preload": if_preload,
-            "if_remove_think_tag": if_remove_think_tag
+            "CORRECT_API_KEY": CORRECT_API_KEY
+        }
+        
+        # 处理可选参数
+        
+        payload["if_remove_think_tag"] = kwargs["if_remove_think_tag"] if "if_remove_think_tag" in kwargs else False
+        
+        payload["if_remove_emoji"] = kwargs["if_remove_emoji"] if "if_remove_emoji" in kwargs else False
+
+        payload["if_preload"] = kwargs["if_preload"] if "if_preload" in kwargs else False
+
+        payload["if_fp16"] = kwargs["if_fp16"] if "if_fp16" in kwargs else False
+
+        payload["if_jit"] = kwargs["if_jit"] if "if_jit" in kwargs else False
+
+        payload["if_trt"] = kwargs["if_trt"] if "if_trt" in kwargs else False
+        
+        headers = {
+            'Authorization': f'Bearer {CORRECT_API_KEY}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        
+        timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+            async with session.post(url, json=payload) as response:
+                response.raise_for_status()
+                result = await response.json()
+                logger.info(f"请求成功: {result}")
+                return result
+
+    async def _post_generate_request(
+            self,
+            server_ip: str,
+            port: str,
+            text: str,
+            CORRECT_API_KEY: str,
+            output_path: str,
+            timeout_seconds: Optional[float] = 60.0,
+        ) -> str:
+            """具体的POST生成请求实现"""
+            url = f"http://{server_ip}:{port}/audio/speech"
+            payload = {
+                "model": "",
+                "input": text,
+                "voice": ""
             }
-    url = 'http://' + ip + ':5050/config/init'
-    await asyncio.sleep(5)#等待fastapi启动
-    ret = requests.post(url, json=payload, timeout=(10, 60))
-    return ret
 
-async def request_json_cfg(prompt_file_name: str, ip: str):
-    payload = {
-        "prompt_file_name": prompt_file_name
-        }
-    url = 'http://' + ip + ':5050/config/json'
-    ret = requests.post(url, json=payload, timeout=(10, 60))
-    return ret.json()
+            headers = {
+                'Authorization': f'Bearer {CORRECT_API_KEY}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+            async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+                async with session.post(url, json=payload) as response:
+                    response.raise_for_status()
+                    
+                    # 检查响应内容类型
+                    content_type = response.headers.get('Content-Type', '')
+                    
+                    if 'audio/wav' in content_type or 'audio/x-wav' in content_type:
+                        # 处理音频文件响应
+                        output_path_path = Path(output_path)
+                        output_path_path.parent.mkdir(parents=True, exist_ok=True)
+                        
+                        with open(output_path_path, 'wb') as f:
+                            while True:
+                                chunk = await response.content.read(1024)
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+                        
+                        logger.info(f"音频文件成功保存到: {output_path_path}")
+                        return str(output_path_path)
+                    else:
+                        # 如果不是音频文件，尝试解析为JSON
+                        result = await response.json()
+                        logger.info(f"请求成功: {result}")
+                    return result
 
-async def request_wave_list(if_request: bool, ip: str):
-    payload = {
-        "if_request": if_request
-        }
-    url = 'http://' + ip + ':5050/list/wav'
-    ret = requests.post(url, json=payload, timeout=(10, 60))
-    return ret.json()
-
-def download_model_and_repo():
-    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')):#克隆仓库
-        pass
-    else:
-        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice')
-        run_command(f"git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git {base_dir}")
-    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B')):
-        pass
-    else:
-        from modelscope import snapshot_download
-        snapshot_download('iic/CosyVoice2-0.5B', local_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'pretrained_models','CosyVoice2-0.5B'))#下载模型
-
-def run_command(command):#cmd line  git required!!!!
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    output, error = process.communicate()
-    if error:
-        print(f"Error: {error.decode()}")
-    return output.decode()
-
-def cleanup():
-    """清理函数，用于在程序结束时删除锁文件"""
-    if os.path.exists(lock_file_path):
-        os.remove(lock_file_path)
-
-def child_process_function():
-    import service 
-    service.run_service()
-
-def start_child_process():
-    global on_init 
-
-    """启动子进程的函数"""
-    if os.path.exists(lock_file_path):
-        if on_init == True:
-            cleanup()
-            on_init = False
-            pass
-        else:
-            print("Another instance of the child process is already running.")
-            return None
-    
-    # 创建锁文件
-    with open(lock_file_path, 'w') as f:
-        f.write("Locked")
-    
-    # 注册清理函数
-    atexit.register(cleanup)
-    
-    # 创建并启动子进程
-    p = Process(
-        target=child_process_function,
-        args=()
+    # 重构后的原始方法
+    async def post_config_with_session_auth(
+            self,
+            server_ip: str,
+            port: str,
+            speech_name: str,
+            prompt_text: str,
+            speech_dialect: str,
+            generate_method,
+            CORRECT_API_KEY: str,
+            timeout_seconds: Optional[float] = 60.0,
+            max_retries: int = 20,
+            initial_retry_delay: float = 1.0,
+            max_retry_delay: float = 60.0,
+            backoff_factor: float = 2.0,
+            **kwargs
+        ) -> dict:
+        """发送带认证的POST请求到指定服务器，具有自动重试机制"""
+        return await self.async_retry_request(
+            request_func=self._post_config_request,
+            max_retries=max_retries,
+            initial_retry_delay=initial_retry_delay,
+            max_retry_delay=max_retry_delay,
+            backoff_factor=backoff_factor,
+            server_ip=server_ip,
+            port=port,
+            speech_name=speech_name,
+            prompt_text=prompt_text,
+            speech_dialect=speech_dialect,
+            generate_method=generate_method,
+            CORRECT_API_KEY=CORRECT_API_KEY,
+            timeout_seconds=timeout_seconds,
+            **kwargs
         )
-    p.start()
-    print("Sub process (service.py) started")
-    return p
 
-def terminate_child_process_on_exit(child_process):
-    """注册一个函数，在主进程退出时终止子进程"""
-    def cleanup_on_exit():
+    async def post_generate_request_with_session_auth(
+        self,
+        server_ip: str,
+        port: str,
+        text: str,
+        CORRECT_API_KEY: str,
+        output_path: str,
+        timeout_seconds: Optional[float] = 60.0,
+        max_retries: int = 20,
+        initial_retry_delay: float = 1.0,
+        max_retry_delay: float = 60.0,
+        backoff_factor: float = 2.0
+    ) -> str:
+        """发送带认证的POST请求到指定服务器，具有自动重试机制，返回保存的音频文件路径"""
+        return await self.async_retry_request(
+            request_func=self._post_generate_request,
+            max_retries=max_retries,
+            initial_retry_delay=initial_retry_delay,
+            max_retry_delay=max_retry_delay,
+            backoff_factor=backoff_factor,
+            server_ip=server_ip,
+            port=port,
+            text=text,
+            CORRECT_API_KEY=CORRECT_API_KEY,
+            output_path=output_path,
+            timeout_seconds=timeout_seconds
+        )
+    
+    async def request_json_cfg(self,prompt_file_name: str, server_ip: str, port:str):
+        payload = {
+            "prompt_file_name": prompt_file_name
+            }
+        url =  f"http://{server_ip}:{port}/config/json"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=60)) as response:
+                return await response.json()
+
+    async def request_wave_list(self, if_request: bool, server_ip: str, port):
+        payload = {
+            "if_request": if_request
+            }
+        url = f"http://{server_ip}:{port}/list/wav"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=60)) as response:
+                return await response.json()
+
+class SubProcesControl():
+    def cleanup(self):
+        """清理函数，用于在程序结束时删除锁文件"""
+        if os.path.exists(lock_file_path):
+            os.remove(lock_file_path)
+
+    def child_process_function(self):
+        from .service import run_service
+        run_service()
+
+    def start_child_process(self):
+        global on_init 
+
+        """启动子进程的函数"""
+        if os.path.exists(lock_file_path):
+            if on_init == True:
+                self.cleanup()
+                on_init = False
+                pass
+            else:
+                logger.error("Another instance of the child process is already running.")
+                return None
+        
+        # 创建锁文件
+        with open(lock_file_path, 'w') as f:
+            f.write("Locked")
+        
+        # 创建并启动子进程
+        p = Process(
+            target=self.child_process_function,
+            args=()
+            )
+        p.start()
+        return p
+    
+    def terminate_child_process(self, child_process):
+        """手动终止子进程"""
         if child_process and child_process.is_alive():
             child_process.terminate()
-            child_process.join()  # 确保子进程已经完全终止
-            print("Service.py process terminated.")
-        cleanup()
-    atexit.register(cleanup_on_exit)
+            child_process.join()
+            self.cleanup()
+            logger.info("Service.py process terminated.")
 
-@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "使用Cosyvoice2:0.5B对Astrbot的tts进行补充", "1.1.0", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
+sbc = SubProcesControl()
+rtac = RequestTTSandConfig()
+
+@register("astrbot_plugin_tts_Cosyvoice2", "xiewoc ", "使用Cosyvoice2:0.5B对Astrbot的tts进行补充", "1.1.1", "https://github.com/xiewoc/astrbot_plugin_tts_Cosyvoice2")
 class astrbot_plugin_tts_Cosyvoice2(Star):
     def __init__(self, context: Context,config: dict):
         super().__init__(context)
 
-        download_model_and_repo()
-
         self.config = config
-        sub_config_misc = self.config.get('misc', {})
-        sub_config_serve = self.config.get('serve_config', {})
+        self.sub_config_misc = self.config.get('misc', {})
+        self.sub_config_serve = self.config.get('serve_config', {})
         #读取设置
 
-        global reduce_parenthesis#减少‘（）’提示词
-        reduce_parenthesis = self.config['if_reduce_parenthesis']
-        global server_ip
-        server_ip = sub_config_serve.get('server_ip', '')
-        
-        global if_remove_think_tag ,instruct_speech_dialect ,zero_shot_text ,generate_method ,if_trt ,if_fp16 ,if_jit ,if_preload ,source_prompt
-        if_remove_think_tag = self.config['if_remove_think_tag']
-        generate_method = self.config['generate_method']
-        instruct_speech_dialect = sub_config_misc.get('instruct_speech_dialect', '') 
-        zero_shot_text = sub_config_misc.get('zero_shot_text', '')
-        source_prompt = sub_config_misc.get('source_prompt', '')
-        if_trt = self.config['if_trt']
-        if_fp16 = self.config['if_fp16']
-        if_jit =  self.config['if_jit']
-        if_preload =  self.config['if_preload']
-        global if_seperate_serve
-        if_seperate_serve = sub_config_serve.get('if_seperate_serve', '')
-        
-        #加载完成时
-        @filter.on_astrbot_loaded()
-        async def on_astrbot_loaded(self):
-            global server_ip
-            global if_seperate_serve
-            global if_remove_think_tag ,instruct_speech_dialect ,zero_shot_text ,generate_method ,if_trt ,if_fp16 ,if_jit ,if_preload ,source_prompt
+        self.reduce_parenthesis = self.config['if_reduce_parenthesis']
 
-            if if_seperate_serve:#若为分布式部署
-                pass
-            else:
-                child_process = start_child_process()
+        self.server_ip = self.sub_config_serve.get('server_ip', '')
+        
+        self.generate_method = self.config['generate_method']
+        self.instruct_speech_dialect = self.sub_config_misc.get('instruct_speech_dialect', '') 
+        self.zero_shot_text = self.sub_config_misc.get('zero_shot_text', '')
+        self.source_prompt = self.sub_config_misc.get('source_prompt', '')
+        
+        self.if_remove_think_tag = self.config['if_remove_think_tag']
+        self.if_remove_emoji = self.config['if_remove_emoji']
+        self.if_preload =  self.config['if_preload']
+        self.if_trt = self.config['if_trt']
+        self.if_fp16 = self.config['if_fp16']
+        self.if_jit =  self.config['if_jit']
+        self.if_seperate_serve = self.sub_config_serve.get('if_seperate_serve', '')
+        
+    async def initialize(self):
+        if self.if_seperate_serve:#若为分布式部署
+            pass
+        else:
+            try:
+                child_process = sbc.start_child_process()
                 if child_process:
-                    terminate_child_process_on_exit(child_process)
+                    logger.info(f"Sub process {child_process} run successfully")
+            except Exception as e:
+                raise e
+        
+        params = {
+            "if_remove_think_tag": self.if_remove_think_tag,
+            "if_remove_emoji": self.if_remove_emoji,
+            "if_preload": self.if_preload,
+            "if_trt": self.if_trt,
+            "if_fp16": self.if_fp16,
+            "if_jit": self.if_jit,
+        }
 
-            await request_config_init(
-                instruct_speech_dialect,
-                zero_shot_text,
-                source_prompt,
-                generate_method,
-                if_jit,
-                if_trt,
-                if_fp16,
-                if_preload,
-                if_remove_think_tag,
-                server_ip
-                    )
+        await rtac.post_config_with_session_auth(self.server_ip, rtac.port, self.source_prompt, self.zero_shot_text, self.instruct_speech_dialect, self.generate_method, self.server_ip, **params)
+
+    async def terminate(self): 
+        sbc.terminate_child_process(self.child_process)
+        logger.info("已调用方法:Terminate,正在关闭")
 
     @filter.command_group("tts_cfg")
     def tts_cfg(self):
@@ -238,34 +380,31 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
     
     @set.command("voice")
     async def voice(self, event: AstrMessageEvent, prompt_file_name: str):
-        '''
-        request_config(speech_dialect:str,prompt_text:str,prompt_file_name:str,ip:str)
-        '''
-        global server_ip
-        
-        ret = await request_json_cfg(prompt_file_name,server_ip)
+
+        ret = await rtac.request_json_cfg(prompt_file_name, self.server_ip, rtac.port)
         if ret == []:
-            await request_config('普通话', '', prompt_file_name, 'instruct2', server_ip)
+            await rtac.post_config_with_session_auth(self.server_ip, rtac.port, prompt_file_name, '', '普通话', 'instruct2', self.server_ip)
         else:
-            await request_config(ret[1], ret[0], prompt_file_name, ret[2], server_ip)
+            #ret_list = [data.get('text'),data.get('form'),data.get('generate_method')]
+            await rtac.post_config_with_session_auth(self.server_ip, rtac.port, prompt_file_name, ret[0], ret[1], ret[2], self.server_ip)
         yield event.plain_result(f"音源更换成功: {prompt_file_name}")
 
     @set.command("dialect")
     async def dialect(self, event: AstrMessageEvent, dialect: str):
         global server_ip
-        await request_config(dialect ,'' , '', 'instruct2', server_ip)
+        await rtac.post_config_with_session_auth(self.server_ip, rtac.port, '' , '', dialect , 'instruct2', self.server_ip)
         yield event.plain_result(f"方言更换成功: {dialect}")
 
     @set.command("method")
     async def method(self, event: AstrMessageEvent, method: str):
         global server_ip
-        await request_config('' ,'' , '', method, server_ip)
+        await rtac.post_config_with_session_auth(self.server_ip, rtac.port, '' ,'' , '', method, self.server_ip)
         yield event.plain_result(f"生成方式更换成功: {method}")
 
     @tts_cfg.command("list")
     async def list(self, event: AstrMessageEvent):
         global server_ip
-        opt = str(await request_wave_list(True,server_ip))
+        opt = str(await rtac.request_wave_list(True, self.server_ip, rtac.port))
         yield event.plain_result(opt)
     
     @filter.on_llm_request()
@@ -274,7 +413,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         if reduce_parenthesis == True:
             req.system_prompt += "请在输出的字段中减少使用括号括起对动作,心情,表情等的描写，尽量只剩下口语部分"
 
-    @llm_tool(name="send_voice_msg") 
+    @filter.llm_tool(name="send_voice_msg") 
     async def send_voice_msg(self, event: AstrMessageEvent, text: str, dialect: Optional[str] = None ) -> MessageEventResult:#这边optional了因为怕有的llm会看不懂
         '''发送语音消息。
 
@@ -284,10 +423,15 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         '''
         if text != '':
             if dialect != None:
-                global server_ip
-                request_config(dialect ,'' , '', 'instruct2', server_ip)
-            path = await request_tts(text)#返回的是wav文件
+                await rtac.post_config_with_session_auth(self.server_ip,rtac.port, '' , '', dialect ,'instruct2', self.server_ip)
+            path = await rtac.post_generate_request_with_session_auth(
+                self.server_ip,
+                rtac.port,
+                text,
+                "1145141919810",
+                output_path
+            ) # 返回的是wav文件
             chain = [
-                Record.fromFileSystem(path)
-                ]
+                Record.fromFileSystem(path) # type: ignore
+            ]
             yield event.chain_result(chain)
