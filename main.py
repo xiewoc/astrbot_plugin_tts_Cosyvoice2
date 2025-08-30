@@ -410,6 +410,17 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
     @filter.on_llm_request()
     async def on_call_llm(self, event: AstrMessageEvent, req: ProviderRequest): # 请注意有三个参数
         global reduce_parenthesis
+        if self.generate_method == "grained_control":
+            req.system_prompt += """
+                            请在生成的文本中，根据语境自然地插入以下情感和音效标签：
+                            - **语气标签**：[sigh], [breath], [quick_breath]
+                            - **笑声标签**：[laughter], <laughter>...</laughter>
+                            - **动作音效**：[cough], [clucking], [lipsmack], [hissing]
+                            - **语音特征**：[accent], [mn], [vocalized-noise]
+                            - **特殊效果**：[noise], <strong>...</strong>
+
+                            请确保标签的使用符合上下文，增强表现力而非堆砌。
+                            """
         if reduce_parenthesis == True:
             req.system_prompt += "请在输出的字段中减少使用括号括起对动作,心情,表情等的描写，尽量只剩下口语部分"
 
@@ -418,12 +429,11 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         '''发送语音消息。
 
         Args:
-            text(string): 要转语音的文字
-            dialect(string): 方言（若未说明则填入 '普通话'）
+            text(string): 要转语音的文字,并可以在其中加入 "[breath]", "<strong>", "</strong>", "[noise]","[laughter]", "[cough]", "[clucking]", "[accent]","[quick_breath]","<laughter>", "</laughter>","[hissing]", "[sigh]", "[vocalized-noise]","[lipsmack]", "[mn]"这些标签
         '''
         if text != '':
             if dialect != None:
-                await rtac.post_config_with_session_auth(self.server_ip,rtac.port, '' , '', dialect ,'instruct2', self.server_ip)
+                await rtac.post_config_with_session_auth(self.server_ip,rtac.port, '' , '', "普通话" ,'instruct2', self.server_ip)
             path = await rtac.post_generate_request_with_session_auth(
                 self.server_ip,
                 rtac.port,

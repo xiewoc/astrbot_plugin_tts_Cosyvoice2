@@ -25,18 +25,8 @@
          ┠set ┰voice    #声音(.wav)
          ┃    ┠dialect  #方言/语言
          ┃    ┖method   #生成方式
-         ┖list           #列出所有.wav音源
+         ┖list          #列出所有.wav音源
 ```
-
-## TODO
-
->1.添加精细控制(grand_control)
->
->2.添加可以直接更改zero_shot_text的指令
->
->3.将request库改为aiohttp
->
->4.添加apikey验证
 
 # 更新内容
 
@@ -79,13 +69,8 @@ eg.
     "generate_method":"zero_shot"
 }
 ```
-如出现问题欢迎issue，PR
-
-也可以进QQ群提问：`823193982`
 
 # 当然，A lot of codes borrowed from Cosyvoice 
-
-
 
 
 
