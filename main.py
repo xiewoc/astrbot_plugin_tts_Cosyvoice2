@@ -425,11 +425,11 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             req.system_prompt += "请在输出的字段中减少使用括号括起对动作,心情,表情等的描写，尽量只剩下口语部分"
 
     @filter.llm_tool(name="send_voice_msg") 
-    async def send_voice_msg(self, event: AstrMessageEvent, text: str, dialect: Optional[str] = None ) -> MessageEventResult:#这边optional了因为怕有的llm会看不懂
+    async def send_voice_msg_cv(self, event: AstrMessageEvent, text: str, dialect: Optional[str] = None ) -> MessageEventResult:#这边optional了因为怕有的llm会看不懂
         '''发送语音消息。
 
         Args:
-            text(string): 要转语音的文字,并可以在其中加入 "[breath]", "<strong>", "</strong>", "[noise]","[laughter]", "[cough]", "[clucking]", "[accent]","[quick_breath]","<laughter>", "</laughter>","[hissing]", "[sigh]", "[vocalized-noise]","[lipsmack]", "[mn]"这些标签
+            text (string): 要转换为语音的文本。可嵌入情感与音效标签以增强表现力。支持的标签：呼吸类: [breath], [quick_breath], [sigh]；笑声类: [laughter], <laughter>...</laughter>；音效类: [cough], [clucking], [hissing], [lipsmack], [vocalized-noise], [mn], [noise]；特征类: [accent]；强调类: <strong>...</strong>。提示: 标签需按语境合理使用，避免过度堆砌。
         '''
         if text != '':
             if dialect != None:
