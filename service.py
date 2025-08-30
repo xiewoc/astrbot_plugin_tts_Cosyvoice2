@@ -45,7 +45,7 @@ class JsonReader():
                 ret_list = [data.get('text'),data.get('form'),data.get('generate_method')]
                 return ret_list
         else:
-            print(f"未找到匹配的.json文件,使用默认模式")
+            logging.error("未找到匹配的.json文件,使用默认模式")
             return []
         
     @staticmethod
@@ -570,13 +570,10 @@ async def set_config(request: Request, config_request: ConfigRequest):
     tts_gen_cosyvoice2.if_jit = config_request.if_jit if config_request.if_jit == True else False
     tts_gen_cosyvoice2.if_trt = config_request.if_trt if config_request.if_trt == True else False
 
-    print(f"tts_gen_cosyvoice2.if_preload: {tts_gen_cosyvoice2.if_preload} \n",
-          f"tts_gen_cosyvoice2.if_remove_emoji: {tts_gen_cosyvoice2.if_remove_emoji}",
-          f"tts_gen_cosyvoice2.if_remove_think_tag: {tts_gen_cosyvoice2.if_remove_think_tag}",
-          f"config_request.speech_dialect: {config_request.speech_dialect}",
-          f"config_request.speech_name: {config_request.speech_name}",
-          f"config_request.prompt_text: {config_request.prompt_text}"
-          )
+    if tts_gen_cosyvoice2.if_preload:
+        await tts_gen_cosyvoice2.load_model(tts_gen_cosyvoice2.if_jit, tts_gen_cosyvoice2.if_trt, tts_gen_cosyvoice2.if_fp16)
+    else:
+        pass
 
 @app.post("/config/json")
 async def get_config(request: Request, json_request: LoadJsonRequest):
