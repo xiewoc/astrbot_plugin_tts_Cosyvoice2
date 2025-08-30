@@ -4,8 +4,6 @@
 
 # 配置
 
-<h1>需要ffmpeg在系统路径下！</h1> 
-
 将[Cosyvoice官方文档](https://www.modelscope.cn/models/iic/CosyVoice2-0.5B/summary)中的操作做一遍，检查是否有遗漏的库未安装
 
 再使用命令 `pip install -r requirements.txt` 在shell安装所需库
@@ -30,9 +28,9 @@
 
 # 更新内容
 
-## for 1.1.0
+## for 1.1.1
 
-更新了获取`.wav`文件列表及其相对应的json的方式，优化了llm在使用llm_tool的时候的返回(`.mp3`->`.wav`)
+添加了`精细控制`，优化了合并文件的方法，大改结构与传参（详见blame），添加了`去除emoji的功能`，加入了`线程池`，将llm的 `functioon call` 的生成方式改为`精细控制`
 
 ## previous versions
 
@@ -44,13 +42,15 @@
 
 异步了一下，减少出现`目标服务器积极拒绝连接`这种情况(1.0.9)
 
+更新了获取`.wav`文件列表及其相对应的json的方式，优化了llm在使用llm_tool的时候的返回(`.mp3`->`.wav`)(1.1.0)
+
 # 球球了，给孩子点个star吧！
 
 # 自带音频
 
 目前作者只给了`prompt_绯莎.wav`和`prompt_明.wav`，后续会持续更新，你们也可以自己创建，构建如下：
 
-语音格式应为wav文件，码率不低于16KHz，创建同名.json文件内容如下：
+语音格式应为wav文件，码率不低于16KHz，创建同名.json文件内容如下(可选)：
 
 ```
 {
