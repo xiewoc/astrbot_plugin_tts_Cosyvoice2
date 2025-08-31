@@ -13,12 +13,9 @@ import asyncio
 import os
 import json
 
-global on_init ,reduce_parenthesis
-on_init = True
-reduce_parenthesis = False
+
 # 锁文件路径
 lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"child_process.lock")
-
 
 temp_dir = os.path.join(get_astrbot_data_path(), "temp")
 output_path = os.path.join(temp_dir,"output.wav")
@@ -316,6 +313,10 @@ class RequestTTSandConfig():
             return {"error": str(e)}
 
 class SubProcesControl():
+    def __init__(self):
+        self.child_process: Optional[Process] = None
+        self.on_init = True
+
     def cleanup(self):
         """清理函数，用于在程序结束时删除锁文件"""
         if os.path.exists(lock_file_path):
@@ -326,13 +327,12 @@ class SubProcesControl():
         run_service()
 
     def start_child_process(self):
-        global on_init 
 
         """启动子进程的函数"""
         if os.path.exists(lock_file_path):
-            if on_init == True:
+            if self.on_init == True:
                 self.cleanup()
-                on_init = False
+                self.on_init = False
                 pass
             else:
                 logger.error("Another instance of the child process is already running.")
@@ -393,9 +393,9 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
             pass
         else:
             try:
-                child_process = sbc.start_child_process()
-                if child_process:
-                    logger.info(f"Sub process {child_process} run successfully")
+                sbc.child_process = sbc.start_child_process()
+                if sbc.child_process:
+                    logger.info(f"Sub process {sbc.child_process} run successfully")
             except Exception as e:
                 raise e
         
@@ -411,7 +411,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
         await rtac.post_config_with_session_auth(self.server_ip, rtac.port, self.source_prompt, self.zero_shot_text, self.instruct_speech_dialect, self.generate_method, self.server_ip, **params)
 
     async def terminate(self): 
-        sbc.terminate_child_process(self.child_process)
+        sbc.terminate_child_process(sbc.child_process)
         logger.info("已调用方法:Terminate,正在关闭")
 
     @filter.command_group("tts_cfg")
@@ -462,7 +462,7 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
 
                             请确保标签的使用符合上下文，增强表现力而非堆砌。
                             """
-        if reduce_parenthesis == True:
+        if self.reduce_parenthesis == True:
             req.system_prompt += "请在输出的字段中减少使用括号括起对动作,心情,表情等的描写，尽量只剩下口语部分"
 
     @filter.llm_tool(name="send_voice_msg") 

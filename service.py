@@ -23,8 +23,19 @@ sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyV
 
 sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'CosyVoice'))
 
-from cosyvoice.cli.cosyvoice import CosyVoice2          # pyright: ignore[reportMissingImports]
-from cosyvoice.utils.file_utils import load_wav         # pyright: ignore[reportMissingImports]
+# 保存原始stdout
+original_stdout = sys.stdout
+
+try:
+    # 重定向到空设备
+    sys.stdout = open(os.devnull, 'w')
+
+    from cosyvoice.cli.cosyvoice import CosyVoice2          # pyright: ignore[reportMissingImports]
+    from cosyvoice.utils.file_utils import load_wav         # pyright: ignore[reportMissingImports]
+    
+except Exception as e:
+    sys.stdout = original_stdout
+    raise e
 
 app = FastAPI()
 
@@ -525,6 +536,7 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shut_down():
+    sys.stdout = original_stdout
     tts_gen_cosyvoice2.thread_pool.shutdown(wait=True)
     
 @app.post("/audio/speech")
