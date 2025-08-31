@@ -2,7 +2,7 @@ import sys
 import os
 import re
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi import FastAPI, HTTPException, Request, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.responses import FileResponse
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Union, List
@@ -33,7 +33,7 @@ class JsonReader():
         pass
 
     @staticmethod
-    async def load_json_config(file_name):# return text
+    async def load_json_config(file_name):# return list
         base_name = os.path.splitext(file_name)[0]
         # 构建对应的.json文件名
         json_file = f"{base_name}.json"
@@ -42,24 +42,47 @@ class JsonReader():
         if os.path.exists(path):
             with open(path, 'r', encoding='utf-8') as file:
                 data = json.load(file)
-                ret_list = [data.get('text'),data.get('form'),data.get('generate_method')]
+                ret_list = {
+                    "text": data.get('text'),
+                    "form": data.get('form'),
+                    "generate_method": data.get('generate_method')
+                    }
                 return ret_list
         else:
             logging.error("未找到匹配的.json文件,使用默认模式")
-            return []
+            return {}
         
     @staticmethod
     async def find_wav_and_json_files(directory):
-        # 改变当前工作目录到指定目录
-        os.chdir(directory)
-        all_files = ''
-        # 查找所有.wav文件
-        wav_files = glob.glob('*.wav')
         
-        for count , wav_file in enumerate(wav_files):
-            all_files += wav_file + '\n'
-        all_files += '共' + str(count + 1) + '个音源文件'#从0计数故加一
-        return all_files
+        try:
+            logging.info(f"Searching in directory: {directory}")
+            
+            # 使用绝对路径查找文件，避免改变工作目录
+            wav_pattern = os.path.join(directory, '*.wav')
+            json_pattern = os.path.join(directory, '*.json')
+            
+            wav_files = glob.glob(wav_pattern)
+            json_files = glob.glob(json_pattern)
+            
+            # 只获取文件名（不含路径）
+            wav_filenames = [os.path.basename(f) for f in wav_files]
+            json_filenames = [os.path.basename(f) for f in json_files]
+            
+            logging.info(f"Found WAV files: {wav_filenames}")
+            logging.info(f"Found JSON files: {json_filenames}")
+            
+            return {
+                "wav_files": wav_filenames,
+                "json_files": json_filenames,
+                "wav_count": len(wav_filenames),
+                "json_count": len(json_filenames),
+                "total_count": len(wav_filenames) + len(json_filenames)
+            }
+            
+        except Exception as e:
+            logging.error(f"Error in find_wav_and_json_files: {str(e)}")
+            raise
     
     @staticmethod
     async def ensure_directory_exists(path: Path) -> None:
@@ -505,7 +528,7 @@ async def shut_down():
     tts_gen_cosyvoice2.thread_pool.shutdown(wait=True)
     
 @app.post("/audio/speech")
-async def generate_speech(request: Request, speech_request: SpeechRequest):
+async def generate_speech(speech_request: SpeechRequest):
     
     if speech_request.input == "" or speech_request.input is None:
         raise HTTPException(status_code=500, detail="Input text is void, please check your client")
@@ -547,7 +570,7 @@ async def generate_speech(request: Request, speech_request: SpeechRequest):
     return FileResponse(path=wav_path, media_type='audio/wav', filename="output.wav")
 
 @app.post("/config")
-async def set_config(request: Request, config_request: ConfigRequest):
+async def set_config(config_request: ConfigRequest):
 
     tts_gen_cosyvoice2.if_preload = config_request.if_preload if config_request.if_preload == True else False
     tts_gen_cosyvoice2.if_remove_emoji = config_request.if_remove_emoji if config_request.if_remove_emoji == True else False
@@ -576,18 +599,18 @@ async def set_config(request: Request, config_request: ConfigRequest):
         pass
 
 @app.post("/config/json")
-async def get_config(request: Request, json_request: LoadJsonRequest):
-    ret = json_reader.load_json_config(json_request.prompt_file_name)
+async def get_config(json_request: LoadJsonRequest):
+    ret = await json_reader.load_json_config(json_request.prompt_file_name)
     return ret
     
 @app.post("/list/wav")
-async def get_wav_list(request: Request, wav_request: WaveFileListRequest):
+async def get_wav_list(wav_request: WaveFileListRequest):
     if wav_request.if_request:
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'sounds')
-        ret = json_reader.find_wav_and_json_files(path)
+        ret = await json_reader.find_wav_and_json_files(path)
         return ret
     else:
-        return ""
+        return {}
 
 if __name__ == "__main__":
     logging.warning("This is a model ,you can't run this seperately.")

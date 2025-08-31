@@ -11,6 +11,7 @@ from pathlib import Path
 import aiohttp
 import asyncio
 import os
+import json
 
 global on_init ,reduce_parenthesis
 on_init = True
@@ -30,7 +31,7 @@ class RequestTTSandConfig():
             self,
             request_func: Callable,
             max_retries: int = 20,
-            initial_retry_delay: float = 1.0,
+            initial_retry_delay: float = 2.0,
             max_retry_delay: float = 60.0,
             backoff_factor: float = 2.0,
             retry_exceptions: tuple = (asyncio.TimeoutError, aiohttp.ClientError),
@@ -198,7 +199,7 @@ class RequestTTSandConfig():
             speech_name: str,
             prompt_text: str,
             speech_dialect: str,
-            generate_method,
+            generate_method: str,
             CORRECT_API_KEY: str,
             timeout_seconds: Optional[float] = 60.0,
             max_retries: int = 20,
@@ -253,23 +254,66 @@ class RequestTTSandConfig():
             timeout_seconds=timeout_seconds
         )
     
-    async def request_json_cfg(self,prompt_file_name: str, server_ip: str, port:str):
-        payload = {
-            "prompt_file_name": prompt_file_name
-            }
-        url =  f"http://{server_ip}:{port}/config/json"
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=60)) as response:
-                return await response.json()
+    async def request_json_cfg(self, prompt_file_name: str, server_ip: str, port: str):
+        try:
+            payload = {"prompt_file_name": prompt_file_name}
+            url = f"http://{server_ip}:{port}/config/json"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=60)) as response:
+                    
+                    # 先读取文本内容
+                    text_response = await response.text()
+                    
+                    if response.status == 200:
+                        try:
+                            return await response.json()
+                        except:
+                            # 如果不是JSON，尝试手动解析
+                            try:
+                                return json.loads(text_response)
+                            except:
+                                return {"raw_response": text_response}
+                    else:
+                        return {"error": f"HTTP {response.status}", "response": text_response}
+                        
+        except Exception as e:
+            return {"error": str(e)}
 
     async def request_wave_list(self, if_request: bool, server_ip: str, port):
-        payload = {
-            "if_request": if_request
-            }
-        url = f"http://{server_ip}:{port}/list/wav"
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=60)) as response:
-                return await response.json()
+        try:
+            payload = {"if_request": if_request}
+            url = f"http://{server_ip}:{port}/list/wav"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=60)) as response:
+                    
+                    # 先读取文本内容
+                    text_response = await response.text()
+                    
+                    if response.status == 200:
+                        try:
+                            ret = ""
+                            dict = await response.json()
+                            wav_files = dict.get("wav_files")
+                            count = dict.get("wav_count")
+                            for t, wav_file in enumerate(wav_files):
+                                ret += f"{t+1}.{wav_file}"
+                                ret += "\n"
+                            ret += f"共{count}个音频文件"
+
+                            return ret
+                        except:
+                            # 如果不是JSON，尝试手动解析
+                            try:
+                                return json.loads(text_response)
+                            except:
+                                return {"raw_response": text_response}
+                    else:
+                        return {"error": f"HTTP {response.status}", "response": text_response}
+                        
+        except Exception as e:
+            return {"error": str(e)}
 
 class SubProcesControl():
     def cleanup(self):
@@ -382,28 +426,25 @@ class astrbot_plugin_tts_Cosyvoice2(Star):
     async def voice(self, event: AstrMessageEvent, prompt_file_name: str):
 
         ret = await rtac.request_json_cfg(prompt_file_name, self.server_ip, rtac.port)
-        if ret == []:
+        if ret == {}:
             await rtac.post_config_with_session_auth(self.server_ip, rtac.port, prompt_file_name, '', '普通话', 'instruct2', self.server_ip)
         else:
             #ret_list = [data.get('text'),data.get('form'),data.get('generate_method')]
-            await rtac.post_config_with_session_auth(self.server_ip, rtac.port, prompt_file_name, ret[0], ret[1], ret[2], self.server_ip)
+            await rtac.post_config_with_session_auth(self.server_ip, rtac.port, prompt_file_name, str(ret["text"]), str(ret["form"]), str(ret["generate_method"]), self.server_ip)
         yield event.plain_result(f"音源更换成功: {prompt_file_name}")
 
     @set.command("dialect")
     async def dialect(self, event: AstrMessageEvent, dialect: str):
-        global server_ip
         await rtac.post_config_with_session_auth(self.server_ip, rtac.port, '' , '', dialect , 'instruct2', self.server_ip)
         yield event.plain_result(f"方言更换成功: {dialect}")
 
     @set.command("method")
     async def method(self, event: AstrMessageEvent, method: str):
-        global server_ip
         await rtac.post_config_with_session_auth(self.server_ip, rtac.port, '' ,'' , '', method, self.server_ip)
         yield event.plain_result(f"生成方式更换成功: {method}")
 
     @tts_cfg.command("list")
     async def list(self, event: AstrMessageEvent):
-        global server_ip
         opt = str(await rtac.request_wave_list(True, self.server_ip, rtac.port))
         yield event.plain_result(opt)
     
